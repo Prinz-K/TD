@@ -8,15 +8,15 @@ export default class EffectsSystem {
     this.arcs = []; // {x1,y1,x2,y2,life,maxLife,color}
     this.flashes = []; // {x,y,radius,life,maxLife,color}
 
-    bus.on('enemyHit', ({ enemy, amount }) => this.spawnHitParticles(enemy.x, enemy.y, '#ffffff'));
-    bus.on('chainLightning', ({ arcs, color }) => this.spawnArcs(arcs, color));
-    bus.on('aoeBurst', ({ x, y, radius, color }) => this.spawnFlash(x, y, radius, color));
-    bus.on('shockwave', ({ x, y, radius, color }) => this.spawnFlash(x, y, radius, color));
-    bus.on('shockwaveKill', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#ff6600'));
-    bus.on('empBurst', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#00ffff'));
-    bus.on('purge', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#44ff88'));
-    bus.on('heroAttack', ({ x, y, tx, ty }) => this.spawnArcs([{ x1: x, y1: y, x2: tx, y2: ty }], '#ffff00', 0.1));
-    bus.on('enemyDeath', ({ x, y, color }) => this.spawnDeathParticles(x, y, color));
+    this.bus.on('enemyHit', ({ enemy, amount }) => this.spawnHitParticles(enemy.x, enemy.y, '#ffffff'));
+    this.bus.on('chainLightning', ({ arcs, color }) => this.spawnArcs(arcs, color));
+    this.bus.on('aoeBurst', ({ x, y, radius, color }) => this.spawnFlash(x, y, radius, color));
+    this.bus.on('shockwave', ({ x, y, radius, color }) => this.spawnFlash(x, y, radius, color));
+    this.bus.on('shockwaveKill', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#ff6600'));
+    this.bus.on('empBurst', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#00ffff'));
+    this.bus.on('purge', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#44ff88'));
+    this.bus.on('heroAttack', ({ x, y, tx, ty }) => this.spawnArcs([{ x1: x, y1: y, x2: tx, y2: ty }], '#ffff00', 0.1));
+    this.bus.on('enemyDeath', ({ x, y, color }) => this.spawnDeathParticles(x, y, color));
   }
 
   spawnHitParticles(x, y, color) {
