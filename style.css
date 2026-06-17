@@ -1,0 +1,428 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #050a14;
+  color: #e6f7ff;
+  font-family: 'Courier New', 'Consolas', monospace;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+#game-container {
+  position: relative;
+  width: 1344px;
+  height: 864px;
+  margin: 16px auto;
+  background: #050a14;
+  box-shadow: 0 0 40px rgba(0, 255, 255, 0.15);
+  border: 1px solid #0d3344;
+}
+
+#game-container canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1344px;
+  height: 864px;
+}
+
+#layer-map { z-index: 1; }
+#layer-entities { z-index: 2; }
+#layer-effects { z-index: 3; pointer-events: none; }
+
+#ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1344px;
+  height: 864px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#ui-overlay > * {
+  pointer-events: auto;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  background: #0d1117;
+  color: #e6f7ff;
+  border: 1px solid #00ffff;
+  border-radius: 3px;
+  padding: 6px 10px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+button:hover:not(:disabled) {
+  background: #0d3344;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #444;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------- HUD bar ---------- */
+.hud-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 0 18px;
+  background: linear-gradient(to bottom, rgba(5, 10, 20, 0.95), rgba(5, 10, 20, 0.6));
+  border-bottom: 1px solid #003333;
+}
+
+.hud-cpu {
+  color: #ffd700;
+  font-weight: bold;
+  font-size: 18px;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+}
+
+.hud-wave {
+  color: #00ffff;
+  font-size: 16px;
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+}
+
+.hud-core {
+  color: #ff4466;
+  font-size: 16px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 6px rgba(255, 68, 102, 0.6);
+}
+
+.hud-speed-btn {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+}
+
+.hero-ability-bar {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  gap: 10px;
+}
+
+.ability-btn {
+  min-width: 110px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.ability-emp { border-color: #00ffff; }
+.ability-purge { border-color: #44ff88; }
+
+/* ---------- Tower buy panel ---------- */
+.tower-buy-panel {
+  position: absolute;
+  background: rgba(8, 14, 24, 0.96);
+  border: 1px solid #00ffff;
+  border-radius: 4px;
+  padding: 10px;
+  width: 200px;
+  box-shadow: 0 0 18px rgba(0, 255, 255, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.buy-tower-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.cost {
+  margin-left: auto;
+  color: #ffd700;
+  font-size: 12px;
+}
+
+/* ---------- Tower info panel ---------- */
+.tower-info-panel {
+  position: absolute;
+  top: 56px;
+  right: 14px;
+  width: 250px;
+  max-height: 760px;
+  overflow-y: auto;
+  background: rgba(8, 14, 24, 0.96);
+  border: 1px solid #00ffff;
+  border-radius: 4px;
+  padding: 12px;
+  box-shadow: 0 0 18px rgba(0, 255, 255, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #00ffff;
+  display: flex;
+  align-items: center;
+}
+
+.tower-stats div, .tower-stats {
+  font-size: 12px;
+  color: #c8e8f0;
+  line-height: 1.5;
+}
+
+.upgrade-path {
+  border-top: 1px solid #0d3344;
+  padding-top: 8px;
+}
+
+.path-title {
+  font-size: 12px;
+  color: #ffaa00;
+  margin-bottom: 2px;
+}
+
+.path-next {
+  font-size: 11px;
+  color: #aac;
+  margin-bottom: 4px;
+}
+
+.upgrade-btn {
+  width: 100%;
+}
+
+.upgrade-btn.blocked {
+  border-color: #ff4466;
+  color: #ff8899;
+}
+
+.targeting-btn, .sell-btn, .panel-close-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.sell-btn {
+  border-color: #ffaa00;
+}
+
+.panel-close-btn {
+  border-color: #ff4466;
+}
+
+/* ---------- Prep overlay ---------- */
+.prep-overlay, .end-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(2, 5, 12, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.prep-panel {
+  width: 760px;
+  max-height: 800px;
+  overflow-y: auto;
+  background: rgba(10, 16, 28, 0.98);
+  border: 1px solid #00ffff;
+  border-radius: 6px;
+  padding: 28px 36px;
+  box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.prep-title {
+  margin: 0;
+  text-align: center;
+  color: #00ffff;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+  font-size: 26px;
+}
+
+.wave-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.enemy-chip {
+  background: #0d1117;
+  border: 1px solid #003333;
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.crate-btn {
+  align-self: center;
+  border-color: #ffaa00;
+  color: #ffd700;
+  font-size: 15px;
+  padding: 10px 24px;
+}
+
+.meta-shop {
+  border-top: 1px solid #0d3344;
+  border-bottom: 1px solid #0d3344;
+  padding: 14px 0;
+}
+
+.tp-header {
+  text-align: center;
+  color: #ffd700;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.shop-card {
+  background: #0d1117;
+  border: 1px solid #003333;
+  border-radius: 4px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shop-card-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #00ffff;
+}
+
+.shop-card-desc {
+  font-size: 11px;
+  color: #aac;
+  flex-grow: 1;
+}
+
+.shop-card-level {
+  font-size: 11px;
+  color: #ffaa00;
+}
+
+.shop-buy-btn {
+  margin-top: 4px;
+}
+
+.start-wave-btn {
+  align-self: center;
+  font-size: 17px;
+  padding: 12px 40px;
+  border-color: #44ff88;
+  color: #88ffbb;
+}
+
+.reset-progress-btn {
+  align-self: center;
+  font-size: 11px;
+  border-color: #ff4466;
+  color: #ff8899;
+  opacity: 0.7;
+}
+
+/* ---------- End overlay (Game Over / Victory) ---------- */
+.end-panel {
+  width: 480px;
+  background: rgba(10, 16, 28, 0.98);
+  border-radius: 6px;
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.end-panel.gameover {
+  border: 1px solid #ff4466;
+  box-shadow: 0 0 50px rgba(255, 68, 102, 0.35);
+}
+
+.end-panel.victory {
+  border: 1px solid #44ff88;
+  box-shadow: 0 0 50px rgba(68, 255, 136, 0.35);
+}
+
+.end-panel h1 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: 4px;
+}
+
+.end-panel.gameover h1 {
+  color: #ff4466;
+  text-shadow: 0 0 14px rgba(255, 68, 102, 0.8);
+}
+
+.end-panel.victory h1 {
+  color: #44ff88;
+  text-shadow: 0 0 14px rgba(68, 255, 136, 0.8);
+}
+
+.end-stats {
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #cde;
+}
+
+.continue-btn {
+  border-color: #44ff88;
+  color: #88ffbb;
+  font-size: 15px;
+  padding: 10px 24px;
+}
+
+.restart-btn {
+  border-color: #00ffff;
+  font-size: 14px;
+  padding: 8px 20px;
+}
