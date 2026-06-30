@@ -10,7 +10,7 @@ export const TILE_BUILDABLE = 0;
 export const TILE_PATH = 1;
 export const TILE_NOBUILD = 2;
 
-export const SAVE_KEY = 'circuit_surge_save';
+export const SAVE_KEY = 'brainrot_td_save';
 
 export const CORE_START_HP = 20;
 export const START_CPU = 200;

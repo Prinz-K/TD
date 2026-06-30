@@ -53,7 +53,7 @@ export default class HUD {
   }
 
   update(state) {
-    this.cpuEl.textContent = `CPU: ${formatNumber(state.cpu)}`;
+    this.cpuEl.textContent = `🪙 ${formatNumber(state.cpu)} Lira`;
 
     if (state.endless) {
       this.waveEl.textContent = `Endless Wave ${state.wave}`;
@@ -63,7 +63,7 @@ export default class HUD {
 
     if (state.coreMaxHp <= 10) {
       this.coreEl.textContent = '❤'.repeat(Math.max(0, state.coreHp));
-      this.coreEl.title = `Core HP: ${state.coreHp}/${state.coreMaxHp}`;
+      this.coreEl.title = `Base HP: ${state.coreHp}/${state.coreMaxHp}`;
     } else {
       this.coreEl.textContent = `HP: ${state.coreHp}`;
     }
@@ -71,18 +71,18 @@ export default class HUD {
     this.speedBtn.textContent = state.gameSpeed === 2 ? '2x' : '1x';
 
     if (state.empCooldown > 0) {
-      this.empBtn.textContent = `EMP ${state.empCooldown.toFixed(1)}s`;
+      this.empBtn.textContent = `🧠 Blast ${state.empCooldown.toFixed(1)}s`;
       this.empBtn.disabled = true;
     } else {
-      this.empBtn.textContent = 'EMP ready';
+      this.empBtn.textContent = '🧠 Brain Blast (E)';
       this.empBtn.disabled = false;
     }
 
     if (state.purgeCooldown > 0) {
-      this.purgeBtn.textContent = `PURGE ${state.purgeCooldown.toFixed(1)}s`;
+      this.purgeBtn.textContent = `👁 Reveal ${state.purgeCooldown.toFixed(1)}s`;
       this.purgeBtn.disabled = true;
     } else {
-      this.purgeBtn.textContent = 'PURGE ready';
+      this.purgeBtn.textContent = '👁 Skibidi Reveal (Q)';
       this.purgeBtn.disabled = false;
     }
   }

@@ -53,11 +53,11 @@ export default class PrepScreen {
     if (crateAvailable) {
       const crateBtn = document.createElement('button');
       crateBtn.className = 'crate-btn';
-      crateBtn.textContent = 'Open Crate Reward!';
+      crateBtn.textContent = '🎁 Open Brainrot Box!';
       crateBtn.addEventListener('click', () => {
         const resultText = this.callbacks.onOpenCrate();
         crateBtn.disabled = true;
-        crateBtn.textContent = resultText || 'Crate opened!';
+        crateBtn.textContent = resultText || 'Box opened!';
       });
       panel.appendChild(crateBtn);
     }
@@ -74,7 +74,7 @@ export default class PrepScreen {
     resetBtn.className = 'reset-progress-btn';
     resetBtn.textContent = 'Reset Progress';
     resetBtn.addEventListener('click', () => {
-      if (confirm('This will permanently erase all meta-progression (Tech Points and upgrades). Continue?')) {
+      if (confirm('This will permanently erase all meta-progression (Rizz and upgrades). Continue?')) {
         this.callbacks.onResetProgress();
       }
     });
@@ -89,7 +89,7 @@ export default class PrepScreen {
 
     const tpHeader = document.createElement('div');
     tpHeader.className = 'tp-header';
-    tpHeader.textContent = `Tech Points: ${formatNumber(meta.techPoints)}`;
+    tpHeader.textContent = `🧠 Rizz: ${formatNumber(meta.techPoints)}`;
     shop.appendChild(tpHeader);
 
     const grid = document.createElement('div');
@@ -114,7 +114,7 @@ export default class PrepScreen {
         btn.textContent = 'Maxed';
         btn.disabled = true;
       } else {
-        btn.textContent = `Buy (${cost} TP)`;
+        btn.textContent = `Buy (${cost} Rizz)`;
         btn.disabled = meta.techPoints < cost;
       }
       btn.addEventListener('click', () => this.callbacks.onPurchaseMeta(key));
@@ -147,7 +147,7 @@ export default class PrepScreen {
     stats.innerHTML = `
       <div>Wave Reached: ${wave}</div>
       <div>Total Kills: ${kills}</div>
-      <div>Tech Points Earned: ${techPointsEarned}</div>
+      <div>Rizz Earned: ${techPointsEarned}</div>
     `;
     panel.appendChild(stats);
 

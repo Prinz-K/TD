@@ -34,7 +34,7 @@ export default class TowerPanel {
 
     const title = document.createElement('div');
     title.className = 'panel-title';
-    title.textContent = 'Build Tower';
+    title.textContent = 'Place Brainrot';
     this.buyPanel.appendChild(title);
 
     for (const typeId of unlockedTypes) {
@@ -42,7 +42,7 @@ export default class TowerPanel {
       const btn = document.createElement('button');
       btn.className = 'buy-tower-btn';
       btn.style.borderColor = def.color;
-      btn.innerHTML = `<span class="swatch" style="background:${def.color}"></span> ${def.name} <span class="cost">${def.cost} CPU</span>`;
+      btn.innerHTML = `<span class="swatch" style="background:${def.color}"></span> ${def.name} <span class="cost">${def.cost} Lira</span>`;
       btn.disabled = cpu < def.cost;
       btn.addEventListener('click', () => this.callbacks.onBuyTower(typeId, gridX, gridY));
       this.buyPanel.appendChild(btn);
@@ -90,7 +90,7 @@ export default class TowerPanel {
       statsHtml += `<div>Atk Spd Buff: +${(tower.outAtkSpeedBuffPct * 100).toFixed(0)}%</div>`;
       if (tower.enemySlowPct) statsHtml += `<div>Enemy Slow: ${(tower.enemySlowPct * 100).toFixed(0)}%</div>`;
       if (tower.shieldBonus) statsHtml += `<div>Shield Bonus: +${tower.shieldBonus} HP</div>`;
-      if (tower.killBonusCpu) statsHtml += `<div>Kill bonus: +${tower.killBonusCpu} CPU</div>`;
+      if (tower.killBonusCpu) statsHtml += `<div>Kill bonus: +${tower.killBonusCpu} Lira</div>`;
     }
     if (tower.shieldHp > 0) statsHtml += `<div>Shield HP: ${tower.shieldHp}</div>`;
     stats.innerHTML = statsHtml;
@@ -107,7 +107,7 @@ export default class TowerPanel {
 
     const sellBtn = document.createElement('button');
     sellBtn.className = 'sell-btn';
-    sellBtn.textContent = `Sell: ${tower.getSellValue()} CPU`;
+    sellBtn.textContent = `Sell: ${tower.getSellValue()} Lira`;
     sellBtn.addEventListener('click', () => this.callbacks.onSellTower(tower.id));
     this.infoPanel.appendChild(sellBtn);
 
@@ -130,7 +130,7 @@ export default class TowerPanel {
 
     let html = `<div class="path-title">${pathDef.name} (Path ${path}) — Tier ${tier}/${maxTier}</div>`;
     if (nextDef) {
-      html += `<div class="path-next">${nextDef.label} — ${nextDef.cost} CPU</div>`;
+      html += `<div class="path-next">${nextDef.label} — ${nextDef.cost} Lira</div>`;
     } else {
       html += `<div class="path-next">Maxed</div>`;
     }
@@ -146,7 +146,7 @@ export default class TowerPanel {
       btn.disabled = true;
       btn.classList.add('blocked');
     } else if (cpu < nextDef.cost) {
-      btn.textContent = `Upgrade ${path} (need ${nextDef.cost} CPU)`;
+      btn.textContent = `Upgrade ${path} (need ${nextDef.cost} Lira)`;
       btn.disabled = true;
     } else {
       btn.textContent = `Upgrade ${path}`;

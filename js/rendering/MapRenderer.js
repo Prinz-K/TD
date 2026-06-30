@@ -1,6 +1,8 @@
 import { TILE_SIZE, GRID_COLS, GRID_ROWS, TILE_PATH, TILE_NOBUILD } from '../constants.js';
 
-// Draws the static map layer: grid lines, path lane, build tiles, hover glow.
+// Draws the static map layer in a soft, bright "toon" style (Bloons-like):
+// a grassy field with a checkerboard, a warm sandy path lane, and a soft
+// hover highlight on buildable tiles.
 export default class MapRenderer {
   constructor(ctx, grid) {
     this.ctx = ctx;
@@ -18,11 +20,13 @@ export default class MapRenderer {
 
   draw() {
     const ctx = this.ctx;
-    ctx.clearRect(0, 0, GRID_COLS * TILE_SIZE, GRID_ROWS * TILE_SIZE);
+    const W = GRID_COLS * TILE_SIZE;
+    const H = GRID_ROWS * TILE_SIZE;
+    ctx.clearRect(0, 0, W, H);
 
-    // Background cyber grid
-    ctx.fillStyle = '#050a14';
-    ctx.fillRect(0, 0, GRID_COLS * TILE_SIZE, GRID_ROWS * TILE_SIZE);
+    // Grassy base
+    ctx.fillStyle = '#8fd06a';
+    ctx.fillRect(0, 0, W, H);
 
     for (let y = 0; y < GRID_ROWS; y++) {
       for (let x = 0; x < GRID_COLS; x++) {
@@ -31,42 +35,56 @@ export default class MapRenderer {
         const py = y * TILE_SIZE;
 
         if (tile === TILE_PATH) {
-          ctx.fillStyle = '#1a1a2e';
-          ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-          ctx.save();
-          ctx.shadowColor = '#00ffff';
-          ctx.shadowBlur = 8;
-          ctx.strokeStyle = 'rgba(0,255,255,0.5)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
-          ctx.restore();
+          // Warm sandy lane with a soft rounded look.
+          ctx.fillStyle = '#e9c987';
+          this._roundRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2, 10);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.18)';
+          this._roundRect(px + 4, py + 4, TILE_SIZE - 8, (TILE_SIZE - 8) * 0.45, 8);
+          ctx.fill();
         } else if (tile === TILE_NOBUILD) {
-          ctx.fillStyle = '#0a0a14';
-          ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-          ctx.strokeStyle = 'rgba(255,0,102,0.25)';
-          ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+          // "Base" / decorative zone — soft blue plaza.
+          ctx.fillStyle = '#bfe0f0';
+          this._roundRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 8);
+          ctx.fill();
         } else {
-          ctx.fillStyle = '#0d1117';
+          // Buildable grass: gentle checkerboard for depth.
+          ctx.fillStyle = (x + y) % 2 === 0 ? '#8fd06a' : '#84c861';
           ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-          ctx.strokeStyle = 'rgba(0,51,51,0.4)';
-          ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+          // tiny grass tuft
+          ctx.fillStyle = 'rgba(60,140,60,0.22)';
+          ctx.beginPath();
+          ctx.arc(px + TILE_SIZE * 0.7, py + TILE_SIZE * 0.72, 2.2, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
     }
 
-    // Hover glow on buildable tile
+    // Hover highlight on buildable tile
     if (this.hoverTile && this.grid.isBuildable(this.hoverTile.x, this.hoverTile.y)) {
       const px = this.hoverTile.x * TILE_SIZE;
       const py = this.hoverTile.y * TILE_SIZE;
       ctx.save();
-      ctx.shadowColor = '#00ffff';
-      ctx.shadowBlur = 16;
-      ctx.fillStyle = 'rgba(0,255,255,0.15)';
-      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-      ctx.strokeStyle = '#00ffff';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.30)';
+      this._roundRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 10);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      this._roundRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 10);
+      ctx.stroke();
       ctx.restore();
     }
+  }
+
+  _roundRect(x, y, w, h, r) {
+    const ctx = this.ctx;
+    const radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + w, y, x + w, y + h, radius);
+    ctx.arcTo(x + w, y + h, x, y + h, radius);
+    ctx.arcTo(x, y + h, x, y, radius);
+    ctx.arcTo(x, y, x + w, y, radius);
+    ctx.closePath();
   }
 }

@@ -13,9 +13,9 @@ export default class EffectsSystem {
     this.bus.on('aoeBurst', ({ x, y, radius, color }) => this.spawnFlash(x, y, radius, color));
     this.bus.on('shockwave', ({ x, y, radius, color }) => this.spawnFlash(x, y, radius, color));
     this.bus.on('shockwaveKill', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#ff6600'));
-    this.bus.on('empBurst', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#00ffff'));
-    this.bus.on('purge', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#44ff88'));
-    this.bus.on('heroAttack', ({ x, y, tx, ty }) => this.spawnArcs([{ x1: x, y1: y, x2: tx, y2: ty }], '#ffff00', 0.1));
+    this.bus.on('empBurst', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#b07fd0'));
+    this.bus.on('purge', ({ x, y, radius }) => this.spawnFlash(x, y, radius, '#5aa9e0'));
+    this.bus.on('heroAttack', ({ x, y, tx, ty }) => this.spawnArcs([{ x1: x, y1: y, x2: tx, y2: ty }], '#ff7fb0', 0.1));
     this.bus.on('enemyDeath', ({ x, y, color }) => this.spawnDeathParticles(x, y, color));
   }
 

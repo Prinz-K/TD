@@ -21,17 +21,17 @@ export default class CrateSystem {
     switch (choice) {
       case 'unlock':
         economy.add(150);
-        resultText = 'All towers already unlocked — bonus +150 CPU instead!';
+        resultText = 'All characters already unlocked — bonus +150 Lira instead!';
         break;
       case 'cpu200':
         economy.add(200);
-        resultText = '+200 CPU bonus!';
+        resultText = '+200 Lira bonus!';
         break;
       case 'freeUpgrade': {
         const towers = towerManager.towers;
         if (towers.length === 0) {
           economy.add(100);
-          resultText = 'No towers placed — +100 CPU instead!';
+          resultText = 'No characters placed — +100 Lira instead!';
         } else {
           const tower = towers[Math.floor(Math.random() * towers.length)];
           if (tower.upgrades.canUpgrade('A')) {
@@ -40,14 +40,14 @@ export default class CrateSystem {
             resultText = `Free Path A upgrade for ${tower.def.name}!`;
           } else {
             economy.add(100);
-            resultText = 'Tower path maxed — +100 CPU instead!';
+            resultText = 'Character path maxed — +100 Lira instead!';
           }
         }
         break;
       }
       case 'empRadius':
         hero.empRadius += 30;
-        resultText = 'Hero EMP radius +30 (permanent this run)!';
+        resultText = 'Brain Blast radius +30 (permanent this run)!';
         break;
       default:
         break;

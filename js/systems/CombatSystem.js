@@ -99,7 +99,7 @@ export default class CombatSystem {
           this._applyDamage(e, tower.burstDamage, false, 0, onKill);
         }
       }
-      this.bus.emit('aoeBurst', { x: lastArc.x2, y: lastArc.y2, radius: tower.burstRadius, color: '#00ffff' });
+      this.bus.emit('aoeBurst', { x: lastArc.x2, y: lastArc.y2, radius: tower.burstRadius, color: '#ffd34d' });
     }
 
     this.bus.emit('chainLightning', { arcs, color: tower.def.color });

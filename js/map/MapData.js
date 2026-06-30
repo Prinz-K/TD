@@ -65,7 +65,7 @@ export function createMainframeDelta() {
   }
 
   return {
-    name: 'Mainframe Delta',
+    name: 'Brainrot Beach',
     tiles,
     waypoints,
   };

@@ -1,12 +1,12 @@
 import SaveManager from '../core/SaveManager.js';
 
-// Persistent meta-progression: Tech Points and permanent upgrade levels.
+// Persistent meta-progression: Rizz (meta currency) and permanent upgrades.
 const UPGRADE_DEFS = {
-  towerDamageBoost: { max: 3, costs: [50, 100, 200], label: 'Tower Damage Boost', desc: '+5% all tower damage per level' },
-  startCpuBonus: { max: 3, costs: [75, 150, 300], label: 'Start CPU Bonus', desc: '+50 starting CPU per level' },
-  heroAbilityCd: { max: 2, costs: [100, 200], label: 'Hero Ability CD', desc: '-10% hero ability cooldowns per level' },
-  passiveScan: { max: 1, costs: [150], label: 'Passive Scan', desc: 'Auto-detect camo within 100px' },
-  compilerMastery: { max: 1, costs: [200], label: 'Compiler Mastery', desc: 'CompilerCannon base damage +30' },
+  towerDamageBoost: { max: 3, costs: [50, 100, 200], label: 'Sigma Power', desc: '+5% all character damage per level' },
+  startCpuBonus: { max: 3, costs: [75, 150, 300], label: 'Pocket Lira', desc: '+50 starting Lira per level' },
+  heroAbilityCd: { max: 2, costs: [100, 200], label: 'Fast Hands', desc: '-10% hero ability cooldowns per level' },
+  passiveScan: { max: 1, costs: [150], label: 'Camo Sense', desc: 'Auto-reveal hidden enemies near hero' },
+  compilerMastery: { max: 1, costs: [200], label: 'Bombardiro Mastery', desc: 'Bombardiro Crocodilo base damage +30' },
 };
 
 export default class MetaProgression {
