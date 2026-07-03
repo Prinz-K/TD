@@ -4,14 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Brainrot TD</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="game-container" style="position:relative; width:1344px; height:864px">
-    <canvas id="layer-map"></canvas>
-    <canvas id="layer-entities"></canvas>
-    <canvas id="layer-effects"></canvas>
-    <div id="ui-overlay"></div>
+  <div id="app">
+    <div id="canvas-wrap">
+      <canvas id="game-canvas" width="1080" height="720"></canvas>
+    </div>
+    <div id="sidebar"></div>
+    <div id="overlay-root"></div>
   </div>
 
   <script type="module" src="js/main.js"></script>

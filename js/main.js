@@ -1,8 +1,7 @@
-import Game from './Game.js';
+import Game from './game.js';
 
-// Entry point: instantiate the game once the DOM is ready.
 function boot() {
-  window.brainrotTDGame = new Game();
+  window.game = new Game();
 }
 
 if (document.readyState === 'loading') {
