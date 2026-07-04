@@ -7,7 +7,10 @@ export const CANVAS_H = 720;
 export const PATH_WIDTH = 44;
 
 // Radius used for tower footprint / overlap checks.
-export const TOWER_RADIUS = 19;
+export const TOWER_RADIUS = 22;
+
+// Characters are drawn larger than the bloons they fight (BTD-style).
+export const CHAR_SCALE = 1.35;
 
 export const SAVE_KEY = 'brainrot_td_meta_v1';
 

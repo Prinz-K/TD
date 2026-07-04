@@ -25,6 +25,7 @@ export class Bloon {
     this.slowPct = 0;
     this.slowTimer = 0;
     this.stunTimer = 0;
+    this.hitT = 0; // white flash when damaged
   }
 
   setType(typeId, hpMult = 1) {
@@ -39,6 +40,7 @@ export class Bloon {
   update(dt, path) {
     if (!this.alive || this.escaped) return;
 
+    if (this.hitT > 0) this.hitT -= dt;
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
       if (this.slowTimer <= 0) this.slowPct = 0;
@@ -84,6 +86,7 @@ export class Bloon {
     if (this.isMoab && moabBonus) dmg += moabBonus;
     const dealt = Math.min(this.hp, dmg);
     this.hp -= dmg;
+    if (dealt > 0) this.hitT = 0.08;
     if (this.hp <= 0) this.alive = false;
     return dealt;
   }
@@ -108,6 +111,11 @@ export class Tower {
     this.cooldown = 0;
     this.aimAngle = -Math.PI / 2;
     this.buffs = { rangeMult: 0, rateMult: 0, damageAdd: 0, camo: false };
+    // animation state
+    this.spawnT = 0.45;    // drop-in on placement
+    this.recoilT = 0;      // kick-back when firing
+    this.celebrateT = 0;   // bounce when upgraded
+    this.animPhase = Math.random() * Math.PI * 2; // idle bob offset
     this.recompute();
   }
 
@@ -177,6 +185,7 @@ export class Tower {
     if (!tier || !this.canBuyTier(pathIdx)) return null;
     this.tiers[pathIdx] += 1;
     this.totalSpent += tier.cost;
+    this.celebrateT = 0.8;
     this.recompute();
     return tier;
   }

@@ -1,7 +1,8 @@
-import { CANVAS_W, CANVAS_H, PATH_WIDTH } from './constants.js';
+import { CANVAS_W, CANVAS_H, PATH_WIDTH, CHAR_SCALE } from './constants.js';
 
 // All drawing, in a soft Bloons-like toon style: bold outlines, glossy
-// highlights, drop shadows, saturated colors.
+// highlights, drop shadows, saturated colors — plus squash-and-stretch
+// animation for characters and juicy pop effects for bloons.
 
 function darken(hex, amt = 0.72) {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -38,9 +39,29 @@ function eyes(ctx, x, y, spread, r, lookX = 0.3, lookY = 0.2) {
   }
 }
 
+function mouth(ctx, x, y, w) {
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(x, y, w, 0.25 * Math.PI, 0.75 * Math.PI);
+  ctx.stroke();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
 // ------------------------------------------------------------------ map ----
 
-// Pre-render the static map (meadow + track + decorations) once.
+// Pre-render the static map (meadow + track + trees + pebbles) once.
 export function renderMapToCanvas(path) {
   const c = document.createElement('canvas');
   c.width = CANVAS_W;
@@ -91,6 +112,27 @@ export function renderMapToCanvas(path) {
   ctx.lineWidth = PATH_WIDTH * 0.45;
   ctx.stroke();
 
+  // pebbles along the track edges
+  for (let i = 24; i < path.pts.length - 24; i += 26) {
+    const a = path.pts[i];
+    const b = path.pts[i + 2];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const side = (i % 52 === 24) ? 1 : -1;
+    const px = a.x + nx * side * (PATH_WIDTH / 2 + 7);
+    const py = a.y + ny * side * (PATH_WIDTH / 2 + 7);
+    ctx.fillStyle = rand() < 0.5 ? '#c9c2b4' : '#b3ab9c';
+    ctx.strokeStyle = 'rgba(60,60,50,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(px, py, 3.2 + rand() * 2.2, 2.4 + rand() * 1.6, rand() * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
   // entry / exit markers
   const start = path.pts[0];
   const end = path.pts[path.pts.length - 1];
@@ -104,7 +146,17 @@ export function renderMapToCanvas(path) {
   ctx.strokeText('EXIT ▶', Math.min(CANVAS_W - 55, end.x - 80), end.y - 36);
   ctx.fillText('EXIT ▶', Math.min(CANVAS_W - 55, end.x - 80), end.y - 36);
 
-  // decorative bushes / flowers away from the track
+  // toon trees (kept clear of the track)
+  let trees = 0;
+  for (let tries = 0; tries < 120 && trees < 7; tries++) {
+    const x = 40 + rand() * (CANVAS_W - 80);
+    const y = 60 + rand() * (CANVAS_H - 120);
+    if (path.distTo(x, y) < PATH_WIDTH * 0.5 + 55) continue;
+    drawTree(ctx, x, y, 0.8 + rand() * 0.5);
+    trees += 1;
+  }
+
+  // bushes / flowers
   for (let i = 0; i < 26; i++) {
     const x = rand() * CANVAS_W;
     const y = rand() * CANVAS_H;
@@ -112,7 +164,44 @@ export function renderMapToCanvas(path) {
     if (i % 3 === 0) drawBush(ctx, x, y, 10 + rand() * 10);
     else drawFlower(ctx, x, y, rand() < 0.5 ? '#ffe066' : '#ff8fa3');
   }
+
+  // subtle vignette
+  const vin = ctx.createRadialGradient(CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * 0.45, CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * 0.95);
+  vin.addColorStop(0, 'rgba(20,50,20,0)');
+  vin.addColorStop(1, 'rgba(20,50,20,0.16)');
+  ctx.fillStyle = vin;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
   return c;
+}
+
+function drawTree(ctx, x, y, s) {
+  shadow(ctx, x, y + 26 * s, 26 * s, 9 * s);
+  // trunk
+  ctx.fillStyle = '#8a5a33';
+  ctx.strokeStyle = darken('#8a5a33', 0.65);
+  ctx.lineWidth = 2;
+  roundRect(ctx, x - 5 * s, y - 2 * s, 10 * s, 28 * s, 4 * s);
+  ctx.fill();
+  ctx.stroke();
+  // layered canopy
+  const greens = ['#3c8f3c', '#4aa348', '#58b656'];
+  const blobs = [
+    [0, -30, 22], [-16, -18, 17], [16, -18, 17], [0, -14, 19],
+  ];
+  blobs.forEach(([dx, dy, r], i) => {
+    ctx.fillStyle = greens[i % greens.length];
+    ctx.strokeStyle = darken('#3c8f3c', 0.7);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  // highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.20)';
+  ctx.beginPath();
+  ctx.arc(x - 7 * s, y - 33 * s, 9 * s, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawBush(ctx, x, y, r) {
@@ -143,14 +232,35 @@ function drawFlower(ctx, x, y, color) {
   ctx.fill();
 }
 
+// --------------------------------------------------------------- clouds ----
+
+export function drawClouds(ctx, clouds, time) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  for (const cl of clouds) {
+    const span = CANVAS_W + 500;
+    const x = ((cl.off + time * cl.speed) % span) - 250;
+    const s = cl.scale;
+    ctx.beginPath();
+    ctx.ellipse(x, cl.y, 60 * s, 20 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 40 * s, cl.y - 12 * s, 38 * s, 16 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(x - 42 * s, cl.y - 8 * s, 32 * s, 14 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 // --------------------------------------------------------------- bloons ----
 
-export function drawBloon(ctx, b) {
+export function drawBloon(ctx, b, time = 0) {
   const r = b.def.radius;
   ctx.save();
-  if (b.isMoab) { drawMoab(ctx, b); ctx.restore(); return; }
+  if (b.isMoab) { drawMoab(ctx, b, time); ctx.restore(); return; }
 
   shadow(ctx, b.x, b.y + r * 0.9, r * 0.8, r * 0.3);
+
+  // gentle bob/wobble so bloons feel alive
+  const wob = 1 + Math.sin(time * 6 + b.x * 0.05 + b.y * 0.03) * 0.035;
 
   // balloon body (slightly taller than wide) + knot
   const color = b.def.color;
@@ -158,7 +268,7 @@ export function drawBloon(ctx, b) {
   ctx.strokeStyle = darken(color, 0.62);
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.ellipse(b.x, b.y, r * 0.85, r, 0, 0, Math.PI * 2);
+  ctx.ellipse(b.x, b.y, r * 0.85 / wob, r * wob, 0, 0, Math.PI * 2);
   ctx.fill();
 
   if (b.def.striped) { // zebra
@@ -195,7 +305,7 @@ export function drawBloon(ctx, b) {
   }
 
   ctx.beginPath();
-  ctx.ellipse(b.x, b.y, r * 0.85, r, 0, 0, Math.PI * 2);
+  ctx.ellipse(b.x, b.y, r * 0.85 / wob, r * wob, 0, 0, Math.PI * 2);
   ctx.stroke();
 
   // knot
@@ -237,6 +347,13 @@ export function drawBloon(ctx, b) {
     ctx.ellipse(b.x, b.y, r * 0.9, r * 1.05, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+  // damage flash
+  if (b.hitT > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${(b.hitT / 0.08) * 0.65})`;
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y, r * 0.85, r, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 
   // ceramic hp pips
@@ -245,20 +362,22 @@ export function drawBloon(ctx, b) {
   }
 }
 
-function drawMoab(ctx, b) {
+function drawMoab(ctx, b, time = 0) {
   const r = b.def.radius;
   const w = r * 2.4;
   const h = r * 1.25;
+  const bob = Math.sin(time * 2.4 + b.x * 0.02) * 2.5;
+  const y = b.y + bob;
   const color = b.typeId === 'bfb' ? '#c05555' : '#6e93bd';
   shadow(ctx, b.x, b.y + h * 0.75, w * 0.5, h * 0.28);
 
   // tail fins
   ctx.fillStyle = darken(color, 0.7);
   ctx.beginPath();
-  ctx.moveTo(b.x - w * 0.48, b.y);
-  ctx.lineTo(b.x - w * 0.68, b.y - h * 0.55);
-  ctx.lineTo(b.x - w * 0.52, b.y);
-  ctx.lineTo(b.x - w * 0.68, b.y + h * 0.55);
+  ctx.moveTo(b.x - w * 0.48, y);
+  ctx.lineTo(b.x - w * 0.68, y - h * 0.55);
+  ctx.lineTo(b.x - w * 0.52, y);
+  ctx.lineTo(b.x - w * 0.68, y + h * 0.55);
   ctx.closePath();
   ctx.fill();
 
@@ -267,34 +386,42 @@ function drawMoab(ctx, b) {
   ctx.strokeStyle = darken(color, 0.55);
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.ellipse(b.x, b.y, w * 0.5, h * 0.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(b.x, y, w * 0.5, h * 0.5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
   // belly stripe
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.beginPath();
-  ctx.ellipse(b.x, b.y + h * 0.16, w * 0.4, h * 0.18, 0, 0, Math.PI * 2);
+  ctx.ellipse(b.x, y + h * 0.16, w * 0.4, h * 0.18, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // nose cone
   ctx.fillStyle = darken(color, 0.75);
   ctx.beginPath();
-  ctx.ellipse(b.x + w * 0.42, b.y, w * 0.1, h * 0.32, 0, 0, Math.PI * 2);
+  ctx.ellipse(b.x + w * 0.42, y, w * 0.1, h * 0.32, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // menacing eyes
-  eyes(ctx, b.x + w * 0.18, b.y - h * 0.12, 8, 5, 0.5, 0.1);
+  eyes(ctx, b.x + w * 0.18, y - h * 0.12, 8, 5, 0.5, 0.1);
   ctx.strokeStyle = darken(color, 0.4);
   ctx.lineWidth = 2.5;
   ctx.beginPath(); // angry brows
-  ctx.moveTo(b.x + w * 0.06, b.y - h * 0.34);
-  ctx.lineTo(b.x + w * 0.16, b.y - h * 0.22);
-  ctx.moveTo(b.x + w * 0.34, b.y - h * 0.22);
-  ctx.lineTo(b.x + w * 0.44, b.y - h * 0.34);
+  ctx.moveTo(b.x + w * 0.06, y - h * 0.34);
+  ctx.lineTo(b.x + w * 0.16, y - h * 0.22);
+  ctx.moveTo(b.x + w * 0.34, y - h * 0.22);
+  ctx.lineTo(b.x + w * 0.44, y - h * 0.34);
   ctx.stroke();
 
-  drawHpBar(ctx, b.x, b.y - h * 0.5 - 12, w * 0.8, b.hp / b.maxHp);
+  // damage flash
+  if (b.hitT > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${(b.hitT / 0.08) * 0.4})`;
+    ctx.beginPath();
+    ctx.ellipse(b.x, y, w * 0.5, h * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawHpBar(ctx, b.x, y - h * 0.5 - 12, w * 0.8, b.hp / b.maxHp);
 }
 
 function drawHpBar(ctx, x, y, w, pct) {
@@ -310,7 +437,7 @@ function drawHpBar(ctx, x, y, w, pct) {
 
 // --------------------------------------------------------------- towers ----
 
-export function drawTower(ctx, tower, selected) {
+export function drawTower(ctx, tower, selected, time = 0) {
   if (selected) {
     ctx.save();
     ctx.fillStyle = 'rgba(255,255,255,0.14)';
@@ -323,10 +450,65 @@ export function drawTower(ctx, tower, selected) {
     ctx.stroke();
     ctx.restore();
   }
-  drawCharacter(ctx, tower.typeId, tower.x, tower.y, 1);
 
-  const total = tower.tiers[0] + tower.tiers[1] + tower.tiers[2];
-  if (total > 0) {
+  const totalTiers = tower.tiers[0] + tower.tiers[1] + tower.tiers[2];
+  const scale = CHAR_SCALE * (1 + totalTiers * 0.03); // grows with upgrades
+
+  let yOff = 0;
+  let sx = 1;
+  let sy = 1;
+  let ox = 0;
+  let oy = 0;
+
+  // idle breathing
+  sy *= 1 + Math.sin(time * 2.2 + tower.animPhase) * 0.02;
+
+  // drop-in on placement: falls from above, lands with squash
+  const airborne = tower.spawnT > 0 && (1 - tower.spawnT / 0.45) < 0.7;
+  if (tower.spawnT > 0) {
+    const p = 1 - tower.spawnT / 0.45;
+    if (p < 0.7) {
+      yOff = -(1 - p / 0.7) * 70;
+    } else {
+      const q = (p - 0.7) / 0.3;
+      sy *= 0.7 + 0.3 * q;
+      sx *= 1.3 - 0.3 * q;
+    }
+  }
+
+  // upgrade celebration: springy bounce
+  if (tower.celebrateT > 0) {
+    const p = 1 - tower.celebrateT / 0.8;
+    const bounce = Math.sin(p * Math.PI * 3) * (1 - p);
+    sy *= 1 + bounce * 0.22;
+    sx *= 1 - bounce * 0.12;
+  }
+
+  // firing recoil: kick back opposite the aim direction
+  if (tower.recoilT > 0 && tower.def.attack !== 'none') {
+    const p = tower.recoilT / 0.15;
+    ox = -Math.cos(tower.aimAngle) * 5 * p;
+    oy = -Math.sin(tower.aimAngle) * 5 * p;
+    sx *= 1 + 0.06 * p;
+    sy *= 1 - 0.06 * p;
+  }
+
+  // grounded shadow (stays put, shrinks while airborne)
+  const shScale = airborne ? 0.6 : 1;
+  shadow(ctx, tower.x, tower.y + 17 * scale, 16 * scale * shScale, 6 * scale * shScale);
+
+  ctx.save();
+  ctx.translate(tower.x + ox, tower.y + oy + yOff);
+  ctx.scale(sx * scale, sy * scale);
+  drawCharacter(ctx, tower.typeId, 0, 0, 1, { noShadow: true, tiers: tower.tiers });
+  ctx.restore();
+
+  // golden crown once any path hits tier 3
+  if (Math.max(...tower.tiers) >= 3) {
+    drawCrown(ctx, tower.x + ox, tower.y + oy + yOff - 26 * scale, 9 * scale);
+  }
+
+  if (totalTiers > 0) {
     ctx.save();
     ctx.font = 'bold 10px "Trebuchet MS", sans-serif';
     ctx.textAlign = 'center';
@@ -334,18 +516,44 @@ export function drawTower(ctx, tower, selected) {
     ctx.lineWidth = 3;
     ctx.fillStyle = '#5b3a12';
     const label = tower.tiers.join('-');
-    ctx.strokeText(label, tower.x, tower.y + 32);
-    ctx.fillText(label, tower.x, tower.y + 32);
+    ctx.strokeText(label, tower.x, tower.y + 30 * scale);
+    ctx.fillText(label, tower.x, tower.y + 30 * scale);
     ctx.restore();
   }
 }
 
-// The character art: soft rounded toon figures with faces and signature props.
-export function drawCharacter(ctx, id, x, y, s = 1) {
+function drawCrown(ctx, x, y, w) {
+  ctx.save();
+  ctx.fillStyle = '#ffd34d';
+  ctx.strokeStyle = '#b8860b';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x - w, y + w * 0.7);
+  ctx.lineTo(x - w, y);
+  ctx.lineTo(x - w * 0.45, y + w * 0.4);
+  ctx.lineTo(x, y - w * 0.35);
+  ctx.lineTo(x + w * 0.45, y + w * 0.4);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + w * 0.7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#ff6b6b';
+  ctx.beginPath();
+  ctx.arc(x, y + w * 0.28, w * 0.16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// The character art: soft rounded toon figures with faces and signature
+// props. Props grow with upgrade tiers (opts.tiers) so upgraded characters
+// visibly evolve.
+export function drawCharacter(ctx, id, x, y, s = 1, opts = {}) {
+  const tiers = opts.tiers || [0, 0, 0];
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  shadow(ctx, 0, 17, 16, 6);
+  if (!opts.noShadow) shadow(ctx, 0, 17, 16, 6);
   ctx.lineWidth = 2.5;
 
   switch (id) {
@@ -360,13 +568,15 @@ export function drawCharacter(ctx, id, x, y, s = 1) {
       ctx.moveTo(-6, -10); ctx.lineTo(-6, 12);
       ctx.moveTo(5, -8); ctx.lineTo(5, 12);
       ctx.stroke();
-      // bat
+      // bat grows with Bonk Power tier
+      const batS = 1 + tiers[0] * 0.18;
       ctx.fillStyle = '#c99655';
       ctx.strokeStyle = darken('#c99655', 0.6);
       ctx.lineWidth = 2;
       ctx.save();
       ctx.translate(15, -4);
       ctx.rotate(-0.6);
+      ctx.scale(batS, batS);
       roundRect(ctx, -3, -16, 7, 24, 3.5);
       ctx.fill(); ctx.stroke();
       ctx.restore();
@@ -375,12 +585,13 @@ export function drawCharacter(ctx, id, x, y, s = 1) {
       break;
     }
     case 'ballerina': { // pink dancer with tutu, arms up
+      const skirtS = 1 + tiers[0] * 0.1;
       ctx.fillStyle = '#ffd9e8';
       ctx.beginPath(); // tutu
-      ctx.moveTo(-17, 13);
+      ctx.moveTo(-17 * skirtS, 13);
       ctx.lineTo(0, 0);
-      ctx.lineTo(17, 13);
-      ctx.quadraticCurveTo(0, 20, -17, 13);
+      ctx.lineTo(17 * skirtS, 13);
+      ctx.quadraticCurveTo(0, 20, -17 * skirtS, 13);
       ctx.fill();
       ctx.fillStyle = '#f58fb8';
       ctx.strokeStyle = darken('#f58fb8', 0.65);
@@ -413,15 +624,16 @@ export function drawCharacter(ctx, id, x, y, s = 1) {
       ctx.moveTo(-5, 8); ctx.lineTo(-3, 11); ctx.lineTo(-1, 8);
       ctx.moveTo(1, 8); ctx.lineTo(3, 11); ctx.lineTo(5, 8);
       ctx.fill();
-      // bomb under arm
+      // bomb grows with Bigger Bombs tier
+      const bombR = 6 * (1 + tiers[0] * 0.2);
       ctx.fillStyle = '#33333d';
       ctx.beginPath();
-      ctx.arc(15, 6, 6, 0, Math.PI * 2);
+      ctx.arc(15, 6, bombR, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = '#f2c744';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(17, 1); ctx.quadraticCurveTo(20, -3, 18, -5);
+      ctx.moveTo(15 + bombR * 0.3, 6 - bombR * 0.8); ctx.quadraticCurveTo(15 + bombR * 0.8, 6 - bombR * 1.5, 15 + bombR * 0.5, 6 - bombR * 1.8);
       ctx.stroke();
       eyes(ctx, 0, -7, 6, 4);
       break;
@@ -445,16 +657,17 @@ export function drawCharacter(ctx, id, x, y, s = 1) {
       ctx.beginPath();
       ctx.moveTo(0, 4); ctx.quadraticCurveTo(2, 14, 9, 15);
       ctx.stroke();
-      // clock on chest
+      // clock grows with Wide Clock tier
+      const clkR = 6 * (1 + tiers[1] * 0.15);
       ctx.fillStyle = '#ffe08a';
       ctx.strokeStyle = '#b8860b';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(-8, 11, 6, 0, Math.PI * 2);
+      ctx.arc(-8, 11, clkR, 0, Math.PI * 2);
       ctx.fill(); ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(-8, 11); ctx.lineTo(-8, 7.5);
-      ctx.moveTo(-8, 11); ctx.lineTo(-5.5, 11);
+      ctx.moveTo(-8, 11); ctx.lineTo(-8, 11 - clkR * 0.6);
+      ctx.moveTo(-8, 11); ctx.lineTo(-8 + clkR * 0.45, 11);
       ctx.stroke();
       eyes(ctx, 0, -6, 5.5, 3.6);
       break;
@@ -528,14 +741,18 @@ export function drawCharacter(ctx, id, x, y, s = 1) {
       break;
     }
     case 'tralalero': { // blue shark wearing sneakers
+      const finS = 1 + Math.max(tiers[0], tiers[2]) * 0.15;
       ctx.fillStyle = '#4a90c2'; // dorsal fin
       ctx.strokeStyle = darken('#4a90c2', 0.6);
+      ctx.save();
+      ctx.scale(finS, finS);
       ctx.beginPath();
       ctx.moveTo(-2, -14);
       ctx.quadraticCurveTo(-2, -28, 10, -22);
       ctx.quadraticCurveTo(4, -18, 4, -13);
       ctx.closePath();
       ctx.fill(); ctx.stroke();
+      ctx.restore();
       // body
       ctx.fillStyle = '#4a90c2';
       ctx.beginPath();
@@ -575,15 +792,6 @@ export function drawCharacter(ctx, id, x, y, s = 1) {
   ctx.restore();
 }
 
-function mouth(ctx, x, y, w) {
-  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-  ctx.lineWidth = 1.8;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.arc(x, y, w, 0.25 * Math.PI, 0.75 * Math.PI);
-  ctx.stroke();
-}
-
 // Small portrait for the shop cards.
 export function makePortrait(id, size = 56) {
   const c = document.createElement('canvas');
@@ -598,6 +806,15 @@ export function makePortrait(id, size = 56) {
 
 export function drawProjectile(ctx, p) {
   ctx.save();
+  // short motion trail
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(p.x - p.vx * 0.03, p.y - p.vy * 0.03);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+
   ctx.translate(p.x, p.y);
   switch (p.style) {
     case 'bat':
@@ -662,31 +879,63 @@ export function drawProjectile(ctx, p) {
 // -------------------------------------------------------------- effects ----
 
 export function drawEffect(ctx, fx) {
+  if (fx.delay > 0) return; // not started yet
   const pct = Math.max(0, fx.life / fx.maxLife);
   ctx.save();
   ctx.globalAlpha = pct;
+
   if (fx.type === 'pop') {
-    // starburst
-    ctx.strokeStyle = fx.color;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    const r = 6 + (1 - pct) * 14;
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2 + 0.4;
+    const r = (fx.radius || 10);
+    // white flash first, then starburst
+    if (pct > 0.6) {
+      ctx.fillStyle = `rgba(255,255,255,${(pct - 0.6) * 2})`;
       ctx.beginPath();
-      ctx.moveTo(fx.x + Math.cos(a) * r * 0.4, fx.y + Math.sin(a) * r * 0.4);
-      ctx.lineTo(fx.x + Math.cos(a) * r, fx.y + Math.sin(a) * r);
+      ctx.arc(fx.x, fx.y, r * 1.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = fx.color;
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    const br = r * 0.6 + (1 - pct) * r * 1.8;
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2 + 0.4;
+      ctx.beginPath();
+      ctx.moveTo(fx.x + Math.cos(a) * br * 0.45, fx.y + Math.sin(a) * br * 0.45);
+      ctx.lineTo(fx.x + Math.cos(a) * br, fx.y + Math.sin(a) * br);
       ctx.stroke();
+    }
+  } else if (fx.type === 'shards') {
+    // rubber scraps flying out ballistically
+    const t = (1 - pct) * fx.maxLife;
+    ctx.fillStyle = fx.color;
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
+    for (const s of fx.parts) {
+      const px = fx.x + Math.cos(s.a) * s.sp * t;
+      const py = fx.y + Math.sin(s.a) * s.sp * t + 260 * t * t;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(s.rot + t * 8);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s.r, s.r * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
     }
   } else if (fx.type === 'boom') {
     ctx.strokeStyle = '#ff9f43';
-    ctx.fillStyle = 'rgba(255,180,80,0.35)';
+    ctx.fillStyle = 'rgba(255,180,80,0.4)';
     ctx.lineWidth = 4;
     const r = fx.radius * (1 - pct * 0.5);
     ctx.beginPath();
     ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    // inner hot core
+    ctx.fillStyle = `rgba(255,240,180,${pct * 0.7})`;
+    ctx.beginPath();
+    ctx.arc(fx.x, fx.y, r * 0.45, 0, Math.PI * 2);
+    ctx.fill();
   } else if (fx.type === 'pulse') {
     ctx.strokeStyle = fx.color || '#9fd6ff';
     ctx.lineWidth = 3;
@@ -694,6 +943,37 @@ export function drawEffect(ctx, fx) {
     ctx.beginPath();
     ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2);
     ctx.stroke();
+  } else if (fx.type === 'dust') {
+    // landing dust puffs spreading sideways
+    const t = 1 - pct;
+    ctx.fillStyle = 'rgba(180,160,120,0.55)';
+    for (const dir of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const dx = dir * (8 + i * 10) * t * 1.6;
+        const r = 5 + i * 2 - t * 3;
+        if (r <= 0) continue;
+        ctx.beginPath();
+        ctx.arc(fx.x + dx, fx.y - i * 2 * t, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  } else if (fx.type === 'sparkle') {
+    // rising golden stars + expanding ring
+    const t = 1 - pct;
+    ctx.strokeStyle = 'rgba(255,211,77,0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(fx.x, fx.y, 12 + t * 30, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ffd34d';
+    ctx.strokeStyle = '#b8860b';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.5;
+      const px = fx.x + Math.cos(a) * (10 + t * 22);
+      const py = fx.y + Math.sin(a) * (6 + t * 12) - t * 34;
+      drawStar(ctx, px, py, 4.5 * pct + 1);
+    }
   } else if (fx.type === 'cash') {
     ctx.font = 'bold 13px "Trebuchet MS", sans-serif';
     ctx.textAlign = 'center';
@@ -705,6 +985,19 @@ export function drawEffect(ctx, fx) {
     ctx.fillText(fx.text, fx.x, y);
   }
   ctx.restore();
+}
+
+function drawStar(ctx, x, y, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const rr = i % 2 === 0 ? r : r * 0.4;
+    const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+    if (i === 0) ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    else ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
 }
 
 // ------------------------------------------------------------ placement ----
@@ -719,17 +1012,6 @@ export function drawGhost(ctx, id, x, y, range, valid) {
   ctx.strokeStyle = valid ? 'rgba(90,190,90,0.9)' : 'rgba(220,60,60,0.9)';
   ctx.lineWidth = 2;
   ctx.stroke();
-  drawCharacter(ctx, id, x, y, 1);
+  drawCharacter(ctx, id, x, y, CHAR_SCALE);
   ctx.restore();
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-  const radius = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.arcTo(x + w, y, x + w, y + h, radius);
-  ctx.arcTo(x + w, y + h, x, y + h, radius);
-  ctx.arcTo(x, y + h, x, y, radius);
-  ctx.arcTo(x, y, x + w, y, radius);
-  ctx.closePath();
 }

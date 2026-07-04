@@ -8,7 +8,7 @@ import { getTowerDef } from './data/towers.js';
 import { createMeadowMeander } from './engine/path.js';
 import { Bloon, Tower, Projectile } from './engine/entities.js';
 import {
-  renderMapToCanvas, drawBloon, drawTower, drawProjectile, drawEffect, drawGhost,
+  renderMapToCanvas, drawBloon, drawTower, drawProjectile, drawEffect, drawGhost, drawClouds,
 } from './render.js';
 import Meta from './meta.js';
 import UI from './ui.js';
@@ -20,6 +20,13 @@ export default class Game {
     this.path = createMeadowMeander();
     this.mapCanvas = renderMapToCanvas(this.path);
     this.meta = new Meta();
+    // slow drifting clouds over the meadow
+    this.clouds = [
+      { y: 90, scale: 1.1, speed: 9, off: 100 },
+      { y: 260, scale: 0.8, speed: 13, off: 620 },
+      { y: 470, scale: 1.3, speed: 7, off: 340 },
+      { y: 620, scale: 0.9, speed: 11, off: 900 },
+    ];
 
     this.state = 'menu'; // menu | playing | victory | defeat
     this._resetRun();
@@ -49,6 +56,7 @@ export default class Game {
     this.mouse = { x: -100, y: -100 };
     this.xpEarned = 0;
     this.pointsBanked = false;
+    this.time = 0; // animation clock
   }
 
   // ------------------------------------------------------------ flow ----
@@ -167,6 +175,8 @@ export default class Game {
         this.cash -= def.cost;
         const tower = new Tower(this.placingType, x, y);
         this.towers.push(tower);
+        // dust puff timed to the landing of the drop-in animation
+        this.effects.push({ type: 'dust', x, y: y + 16, delay: 0.3, life: 0.45, maxLife: 0.45 });
         this._recomputeAuras();
         this.selectTower(tower);
         this.placingType = null;
@@ -215,6 +225,7 @@ export default class Game {
     if (!tier || !tower.canBuyTier(pathIdx) || this.cash < tier.cost) return;
     this.cash -= tier.cost;
     tower.buyTier(pathIdx);
+    this.effects.push({ type: 'sparkle', x: tower.x, y: tower.y, life: 0.9, maxLife: 0.9 });
     this._recomputeAuras();
     this.ui.refresh();
     this.ui.showTowerInfo(tower);
@@ -264,6 +275,8 @@ export default class Game {
   }
 
   _update(dt) {
+    this.time += dt;
+
     // spawn
     if (this.roundActive) {
       this.roundTime += dt;
@@ -296,8 +309,13 @@ export default class Game {
       }
     }
 
-    // towers attack
-    for (const t of this.towers) this._updateTower(t, dt);
+    // towers attack + animation timers
+    for (const t of this.towers) {
+      if (t.spawnT > 0) t.spawnT -= dt;
+      if (t.recoilT > 0) t.recoilT -= dt;
+      if (t.celebrateT > 0) t.celebrateT -= dt;
+      this._updateTower(t, dt);
+    }
 
     // projectiles
     for (const p of this.projectiles) {
@@ -306,8 +324,11 @@ export default class Game {
     }
     this.projectiles = this.projectiles.filter((p) => p.alive);
 
-    // effects
-    for (const fx of this.effects) fx.life -= dt;
+    // effects (delay counts down before life starts draining)
+    for (const fx of this.effects) {
+      if (fx.delay > 0) fx.delay -= dt;
+      else fx.life -= dt;
+    }
     this.effects = this.effects.filter((fx) => fx.life > 0);
 
     // round completion
@@ -328,6 +349,7 @@ export default class Game {
         && dist(t.x, t.y, b.x, b.y) <= t.stats.range);
       if (inRange.length === 0) return;
       t.cooldown = 1 / t.stats.rate;
+      t.recoilT = 0.15;
       this.effects.push({ type: 'pulse', x: t.x, y: t.y, radius: t.stats.range, color: '#bfe3ff', life: 0.4, maxLife: 0.4 });
       for (const b of inRange) {
         this._damageBloon(b, t.stats.damage, t.def.damageType, t.stats.moabBonus);
@@ -344,6 +366,7 @@ export default class Game {
         && dist(t.x, t.y, b.x, b.y) <= t.stats.range + 20);
       if (!any) return;
       t.cooldown = 1 / t.stats.rate;
+      t.recoilT = 0.15;
       const n = t.stats.radialCount;
       for (let i = 0; i < n; i++) {
         const angle = (i / n) * Math.PI * 2 + Math.random() * 0.15;
@@ -366,6 +389,7 @@ export default class Game {
     const future = this.path.getPos(futureDist);
     const angle = Math.atan2(future.y - t.y, future.x - t.x);
     t.aimAngle = angle;
+    t.recoilT = 0.15;
 
     const shots = 1 + (t.stats.multishot || 0);
     for (let i = 0; i < shots; i++) {
@@ -431,7 +455,7 @@ export default class Game {
       this.xpEarned += dealt;
     }
     if (!b.alive) {
-      this.effects.push({ type: 'pop', x: b.x, y: b.y, color: b.def.color, life: 0.25, maxLife: 0.25 });
+      this._spawnDeathFx(b);
       const children = b.def.children;
       children.forEach((childType, i) => {
         this.bloons.push(new Bloon(childType, {
@@ -445,18 +469,52 @@ export default class Game {
     }
   }
 
+  // Pop / destruction animations. Regular bloons burst into rubber shards;
+  // MOAB-class goes down in a chain of staggered explosions.
+  _spawnDeathFx(b) {
+    const r = b.def.radius;
+    this.effects.push({ type: 'pop', x: b.x, y: b.y, radius: r, color: b.def.color, life: 0.28, maxLife: 0.28 });
+
+    const nShards = b.isMoab ? 16 : 7;
+    const parts = [];
+    for (let i = 0; i < nShards; i++) {
+      parts.push({
+        a: (i / nShards) * Math.PI * 2 + Math.random() * 0.6,
+        sp: 90 + Math.random() * 140 + (b.isMoab ? 80 : 0),
+        r: 2.5 + Math.random() * 3 + (b.isMoab ? 2 : 0),
+        rot: Math.random() * Math.PI * 2,
+      });
+    }
+    this.effects.push({ type: 'shards', x: b.x, y: b.y, color: b.def.color, parts, life: 0.6, maxLife: 0.6 });
+
+    if (b.isMoab) {
+      for (let i = 0; i < 3; i++) {
+        this.effects.push({
+          type: 'boom',
+          x: b.x + (Math.random() - 0.5) * r * 1.6,
+          y: b.y + (Math.random() - 0.5) * r,
+          radius: r * (1.1 + i * 0.35),
+          delay: i * 0.12,
+          life: 0.35,
+          maxLife: 0.35,
+        });
+      }
+    }
+  }
+
   // ---------------------------------------------------------- render ----
 
   _render() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
     ctx.drawImage(this.mapCanvas, 0, 0);
+    drawClouds(ctx, this.clouds, this.time);
 
     // bloons sorted so the furthest along draws on top
     const sorted = [...this.bloons].sort((a, b) => a.distance - b.distance);
-    for (const b of sorted) drawBloon(ctx, b);
+    for (const b of sorted) drawBloon(ctx, b, this.time);
 
-    for (const t of this.towers) drawTower(ctx, t, this.selectedTower && t.id === this.selectedTower.id);
+    for (const t of this.towers) drawTower(ctx, t, this.selectedTower && t.id === this.selectedTower.id, this.time);
     for (const p of this.projectiles) drawProjectile(ctx, p);
     for (const fx of this.effects) drawEffect(ctx, fx);
 
