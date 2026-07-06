@@ -116,6 +116,8 @@ export class Tower {
     this.recoilT = 0;      // kick-back when firing
     this.celebrateT = 0;   // bounce when upgraded
     this.animPhase = Math.random() * Math.PI * 2; // idle bob offset
+    this.spin = 0;         // pirouette angle (Ballerina)
+    this.spinVel = 0;
     this.recompute();
   }
 

@@ -61,17 +61,24 @@ function roundRect(ctx, x, y, w, h, r) {
 
 // ------------------------------------------------------------------ map ----
 
-// Pre-render the static map (meadow + track + trees + pebbles) once.
-export function renderMapToCanvas(path) {
+const DEFAULT_THEME = {
+  baseTop: '#9edb72', baseBottom: '#7cc558',
+  pathEdge: '#b98d4f', pathFill: '#e8c887',
+  decor: 'meadow',
+};
+
+// Pre-render the static map (terrain + track + decorations) once.
+export function renderMapToCanvas(path, theme = DEFAULT_THEME) {
   const c = document.createElement('canvas');
   c.width = CANVAS_W;
   c.height = CANVAS_H;
   const ctx = c.getContext('2d');
+  const desert = theme.decor === 'desert';
 
-  // meadow base with soft vertical light
+  // terrain base with soft vertical light
   const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-  grad.addColorStop(0, '#9edb72');
-  grad.addColorStop(1, '#7cc558');
+  grad.addColorStop(0, theme.baseTop);
+  grad.addColorStop(1, theme.baseBottom);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
@@ -84,7 +91,7 @@ export function renderMapToCanvas(path) {
     ctx.ellipse(rand() * CANVAS_W, rand() * CANVAS_H, 60 + rand() * 110, 40 + rand() * 60, rand() * 3, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = 'rgba(40,110,40,0.10)';
+  ctx.fillStyle = desert ? 'rgba(150,100,40,0.10)' : 'rgba(40,110,40,0.10)';
   for (let i = 0; i < 12; i++) {
     ctx.beginPath();
     ctx.ellipse(rand() * CANVAS_W, rand() * CANVAS_H, 50 + rand() * 90, 30 + rand() * 50, rand() * 3, 0, Math.PI * 2);
@@ -100,11 +107,11 @@ export function renderMapToCanvas(path) {
     for (const p of path.pts) ctx.lineTo(p.x, p.y);
   };
   trace();
-  ctx.strokeStyle = '#b98d4f';
+  ctx.strokeStyle = theme.pathEdge;
   ctx.lineWidth = PATH_WIDTH + 10;
   ctx.stroke();
   trace();
-  ctx.strokeStyle = '#e8c887';
+  ctx.strokeStyle = theme.pathFill;
   ctx.lineWidth = PATH_WIDTH;
   ctx.stroke();
   trace();
@@ -146,33 +153,98 @@ export function renderMapToCanvas(path) {
   ctx.strokeText('EXIT ▶', Math.min(CANVAS_W - 55, end.x - 80), end.y - 36);
   ctx.fillText('EXIT ▶', Math.min(CANVAS_W - 55, end.x - 80), end.y - 36);
 
-  // toon trees (kept clear of the track)
-  let trees = 0;
-  for (let tries = 0; tries < 120 && trees < 7; tries++) {
+  // large decorations (kept clear of the track): trees or cacti
+  let bigs = 0;
+  for (let tries = 0; tries < 120 && bigs < 7; tries++) {
     const x = 40 + rand() * (CANVAS_W - 80);
     const y = 60 + rand() * (CANVAS_H - 120);
     if (path.distTo(x, y) < PATH_WIDTH * 0.5 + 55) continue;
-    drawTree(ctx, x, y, 0.8 + rand() * 0.5);
-    trees += 1;
+    if (desert) drawCactus(ctx, x, y, 0.8 + rand() * 0.5);
+    else drawTree(ctx, x, y, 0.8 + rand() * 0.5);
+    bigs += 1;
   }
 
-  // bushes / flowers
+  // small decorations: bushes/flowers or rocks/skulls
   for (let i = 0; i < 26; i++) {
     const x = rand() * CANVAS_W;
     const y = rand() * CANVAS_H;
     if (path.distTo(x, y) < PATH_WIDTH * 0.5 + 34) continue;
-    if (i % 3 === 0) drawBush(ctx, x, y, 10 + rand() * 10);
-    else drawFlower(ctx, x, y, rand() < 0.5 ? '#ffe066' : '#ff8fa3');
+    if (desert) {
+      if (i % 3 === 0) drawRock(ctx, x, y, 7 + rand() * 8);
+      else drawFlower(ctx, x, y, rand() < 0.5 ? '#e8a34d' : '#d97f5f');
+    } else if (i % 3 === 0) {
+      drawBush(ctx, x, y, 10 + rand() * 10);
+    } else {
+      drawFlower(ctx, x, y, rand() < 0.5 ? '#ffe066' : '#ff8fa3');
+    }
   }
 
-  // subtle vignette
+  // subtle vignette (warmer in the desert)
   const vin = ctx.createRadialGradient(CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * 0.45, CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * 0.95);
-  vin.addColorStop(0, 'rgba(20,50,20,0)');
-  vin.addColorStop(1, 'rgba(20,50,20,0.16)');
+  vin.addColorStop(0, desert ? 'rgba(90,50,10,0)' : 'rgba(20,50,20,0)');
+  vin.addColorStop(1, desert ? 'rgba(90,50,10,0.16)' : 'rgba(20,50,20,0.16)');
   ctx.fillStyle = vin;
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   return c;
+}
+
+// Small preview of a map for the menu's map-select cards.
+export function makeMapThumb(path, theme, w = 200, h = 133) {
+  const full = renderMapToCanvas(path, theme);
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  c.getContext('2d').drawImage(full, 0, 0, w, h);
+  return c;
+}
+
+function drawCactus(ctx, x, y, s) {
+  shadow(ctx, x, y + 24 * s, 20 * s, 7 * s);
+  ctx.fillStyle = '#4e9e5f';
+  ctx.strokeStyle = darken('#4e9e5f', 0.65);
+  ctx.lineWidth = 2;
+  // trunk
+  roundRect(ctx, x - 7 * s, y - 30 * s, 14 * s, 54 * s, 7 * s);
+  ctx.fill(); ctx.stroke();
+  // arms: two side paddles
+  for (const dir of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(x + dir * 15 * s, y - 10 * s, 9 * s, 6 * s, dir * 0.5, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+  }
+  // highlight + flower on top
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(x - 3 * s, y - 22 * s, 3 * s, 10 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ff8fa3';
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * 4 * s, y - 32 * s + Math.sin(a) * 4 * s, 2.6 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawRock(ctx, x, y, r) {
+  shadow(ctx, x, y + r * 0.5, r * 1.1, r * 0.35);
+  ctx.fillStyle = '#b3a690';
+  ctx.strokeStyle = darken('#b3a690', 0.65);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x - r, y + r * 0.4);
+  ctx.lineTo(x - r * 0.6, y - r * 0.5);
+  ctx.lineTo(x + r * 0.2, y - r * 0.7);
+  ctx.lineTo(x + r, y - r * 0.1);
+  ctx.lineTo(x + r * 0.8, y + r * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath();
+  ctx.arc(x - r * 0.25, y - r * 0.3, r * 0.25, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawTree(ctx, x, y, s) {
@@ -500,7 +572,12 @@ export function drawTower(ctx, tower, selected, time = 0) {
   ctx.save();
   ctx.translate(tower.x + ox, tower.y + oy + yOff);
   ctx.scale(sx * scale, sy * scale);
-  drawCharacter(ctx, tower.typeId, 0, 0, 1, { noShadow: true, tiers: tower.tiers });
+  drawCharacter(ctx, tower.typeId, 0, 0, 1, {
+    noShadow: true,
+    tiers: tower.tiers,
+    spin: tower.spin,
+    swing: tower.recoilT > 0 ? tower.recoilT / 0.15 : 0,
+  });
   ctx.restore();
 
   // golden crown once any path hits tier 3
@@ -550,10 +627,13 @@ function drawCrown(ctx, x, y, w) {
 // visibly evolve.
 export function drawCharacter(ctx, id, x, y, s = 1, opts = {}) {
   const tiers = opts.tiers || [0, 0, 0];
+  const swing = opts.swing || 0; // 1 -> just fired, decays to 0
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
   if (!opts.noShadow) shadow(ctx, 0, 17, 16, 6);
+  // Ballerina pirouettes while firing
+  if (id === 'ballerina' && opts.spin) ctx.rotate(opts.spin);
   ctx.lineWidth = 2.5;
 
   switch (id) {
@@ -568,14 +648,14 @@ export function drawCharacter(ctx, id, x, y, s = 1, opts = {}) {
       ctx.moveTo(-6, -10); ctx.lineTo(-6, 12);
       ctx.moveTo(5, -8); ctx.lineTo(5, 12);
       ctx.stroke();
-      // bat grows with Bonk Power tier
+      // bat grows with Bonk Power tier and swings when firing
       const batS = 1 + tiers[0] * 0.18;
       ctx.fillStyle = '#c99655';
       ctx.strokeStyle = darken('#c99655', 0.6);
       ctx.lineWidth = 2;
       ctx.save();
       ctx.translate(15, -4);
-      ctx.rotate(-0.6);
+      ctx.rotate(-0.6 - Math.sin(swing * Math.PI) * 1.2);
       ctx.scale(batS, batS);
       roundRect(ctx, -3, -16, 7, 24, 3.5);
       ctx.fill(); ctx.stroke();
@@ -657,8 +737,9 @@ export function drawCharacter(ctx, id, x, y, s = 1, opts = {}) {
       ctx.beginPath();
       ctx.moveTo(0, 4); ctx.quadraticCurveTo(2, 14, 9, 15);
       ctx.stroke();
-      // clock grows with Wide Clock tier
+      // clock grows with Wide Clock tier; hands whirl when pulsing
       const clkR = 6 * (1 + tiers[1] * 0.15);
+      const handA = swing * Math.PI * 2;
       ctx.fillStyle = '#ffe08a';
       ctx.strokeStyle = '#b8860b';
       ctx.lineWidth = 1.5;
@@ -666,8 +747,10 @@ export function drawCharacter(ctx, id, x, y, s = 1, opts = {}) {
       ctx.arc(-8, 11, clkR, 0, Math.PI * 2);
       ctx.fill(); ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(-8, 11); ctx.lineTo(-8, 11 - clkR * 0.6);
-      ctx.moveTo(-8, 11); ctx.lineTo(-8 + clkR * 0.45, 11);
+      ctx.moveTo(-8, 11);
+      ctx.lineTo(-8 + Math.sin(handA) * clkR * 0.6, 11 - Math.cos(handA) * clkR * 0.6);
+      ctx.moveTo(-8, 11);
+      ctx.lineTo(-8 + Math.cos(handA * 0.5) * clkR * 0.45, 11 + Math.sin(handA * 0.5) * clkR * 0.45);
       ctx.stroke();
       eyes(ctx, 0, -6, 5.5, 3.6);
       break;

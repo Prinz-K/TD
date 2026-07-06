@@ -73,8 +73,8 @@ export default class GamePath {
   }
 }
 
-// The default map: "Meadow Meander" — a winding S-curve track through a
-// bright meadow, entering top-left and exiting bottom-right.
+// "Meadow Meander" — a long winding S-curve track through a bright meadow,
+// entering top-left and exiting bottom-right. Lots of curve time = Beginner.
 export function createMeadowMeander() {
   return new GamePath([
     { x: -40, y: 120 },
@@ -96,4 +96,58 @@ export function createMeadowMeander() {
     { x: 920, y: 680 },
     { x: 1120, y: 660 },
   ]);
+}
+
+// "Bombardino Dunes" — a shorter, more direct desert track. Less time on
+// screen per bloon = Intermediate.
+function createBombardinoDunes() {
+  return new GamePath([
+    { x: -40, y: 620 },
+    { x: 160, y: 600 },
+    { x: 300, y: 480 },
+    { x: 280, y: 300 },
+    { x: 420, y: 190 },
+    { x: 600, y: 230 },
+    { x: 660, y: 400 },
+    { x: 560, y: 540 },
+    { x: 680, y: 650 },
+    { x: 860, y: 590 },
+    { x: 900, y: 420 },
+    { x: 860, y: 250 },
+    { x: 960, y: 130 },
+    { x: 1120, y: 110 },
+  ]);
+}
+
+// Map registry: path + visual theme + menu metadata.
+export const MAPS = {
+  meadow: {
+    id: 'meadow',
+    name: 'Meadow Meander',
+    difficulty: 'Beginner',
+    create: createMeadowMeander,
+    theme: {
+      baseTop: '#9edb72', baseBottom: '#7cc558',
+      pathEdge: '#b98d4f', pathFill: '#e8c887',
+      decor: 'meadow',
+    },
+  },
+  dunes: {
+    id: 'dunes',
+    name: 'Bombardino Dunes',
+    difficulty: 'Intermediate',
+    create: createBombardinoDunes,
+    theme: {
+      baseTop: '#f0d99a', baseBottom: '#dbba74',
+      pathEdge: '#a8703c', pathFill: '#cf9455',
+      decor: 'desert',
+    },
+  },
+};
+
+export const MAP_ORDER = ['meadow', 'dunes'];
+
+export function createMap(id) {
+  const def = MAPS[id] || MAPS.meadow;
+  return { id: def.id, name: def.name, difficulty: def.difficulty, path: def.create(), theme: def.theme };
 }

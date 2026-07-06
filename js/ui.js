@@ -1,6 +1,7 @@
 import { fmt, CAMPAIGN_ROUNDS, SELL_RATIO } from './constants.js';
 import { TOWERS, TOWER_ORDER } from './data/towers.js';
-import { makePortrait } from './render.js';
+import { MAPS, MAP_ORDER, createMap } from './engine/path.js';
+import { makePortrait, makeMapThumb } from './render.js';
 import { PERKS } from './meta.js';
 
 // DOM sidebar (BTD-style shop on the right) + full-screen overlays
@@ -41,7 +42,13 @@ export default class UI {
     this.startBtn.addEventListener('click', () => this.game.startRound());
     this.speedBtn = el('button', 'speed-btn', '▶▶ 1x');
     this.speedBtn.addEventListener('click', () => this.game.toggleSpeed());
-    controls.append(this.startBtn, this.speedBtn);
+    this.muteBtn = el('button', 'mute-btn', this.game.sfx.muted ? '🔇' : '🔊');
+    this.muteBtn.title = 'Toggle sound';
+    this.muteBtn.addEventListener('click', () => {
+      const muted = this.game.sfx.toggleMuted();
+      this.muteBtn.textContent = muted ? '🔇' : '🔊';
+    });
+    controls.append(this.startBtn, this.speedBtn, this.muteBtn);
     this.sidebar.appendChild(controls);
 
     this.hintEl = el('div', 'sb-hint', 'Click a character, then click the map to place. Right-click cancels. Space starts / speeds up.');
@@ -246,6 +253,32 @@ export default class UI {
       perkGrid.appendChild(card);
     }
     panel.appendChild(perkGrid);
+
+    // map select
+    panel.appendChild(el('div', 'menu-section-title', 'Map'));
+    if (!this.mapThumbs) {
+      this.mapThumbs = {};
+      for (const id of MAP_ORDER) {
+        const m = createMap(id);
+        this.mapThumbs[id] = makeMapThumb(m.path, m.theme, 168, 112);
+      }
+    }
+    const mapGrid = el('div', 'map-grid');
+    for (const id of MAP_ORDER) {
+      const def = MAPS[id];
+      const card = el('div', `map-card${this.game.selectedMapId === id ? ' active' : ''}`);
+      const thumb = this.mapThumbs[id];
+      thumb.classList.add('map-thumb');
+      card.appendChild(thumb);
+      card.appendChild(el('div', 'map-name', def.name));
+      card.appendChild(el('div', `map-diff ${def.difficulty.toLowerCase()}`, def.difficulty));
+      card.addEventListener('click', () => {
+        this.game.setMap(id);
+        this.showMenu();
+      });
+      mapGrid.appendChild(card);
+    }
+    panel.appendChild(mapGrid);
 
     const play = el('button', 'play-btn', '▶ PLAY');
     play.addEventListener('click', () => this.game.startRun());

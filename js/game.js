@@ -5,21 +5,25 @@ import {
 import { rbe } from './data/bloons.js';
 import { getRound, roundEndCash } from './data/rounds.js';
 import { getTowerDef } from './data/towers.js';
-import { createMeadowMeander } from './engine/path.js';
+import { createMap } from './engine/path.js';
 import { Bloon, Tower, Projectile } from './engine/entities.js';
 import {
   renderMapToCanvas, drawBloon, drawTower, drawProjectile, drawEffect, drawGhost, drawClouds,
 } from './render.js';
 import Meta from './meta.js';
+import Sfx from './audio.js';
 import UI from './ui.js';
 
 export default class Game {
   constructor() {
     this.canvas = document.getElementById('game-canvas');
     this.ctx = this.canvas.getContext('2d');
-    this.path = createMeadowMeander();
-    this.mapCanvas = renderMapToCanvas(this.path);
+    this.selectedMapId = 'meadow';
+    const map = createMap(this.selectedMapId);
+    this.path = map.path;
+    this.mapCanvas = renderMapToCanvas(this.path, map.theme);
     this.meta = new Meta();
+    this.sfx = new Sfx();
     // slow drifting clouds over the meadow
     this.clouds = [
       { y: 90, scale: 1.1, speed: 9, off: 100 },
@@ -61,6 +65,15 @@ export default class Game {
 
   // ------------------------------------------------------------ flow ----
 
+  // Only callable from the menu (no towers placed yet).
+  setMap(id) {
+    if (this.state !== 'menu' && this.state !== 'victory' && this.state !== 'defeat') return;
+    this.selectedMapId = id;
+    const map = createMap(id);
+    this.path = map.path;
+    this.mapCanvas = renderMapToCanvas(this.path, map.theme);
+  }
+
   startRun() {
     this._resetRun();
     this.state = 'playing';
@@ -88,6 +101,8 @@ export default class Game {
     this.spawnQueue.sort((a, b) => a.at - b.at);
     this.roundTime = 0;
     this.roundActive = true;
+    this.sfx.play('roundStart');
+    if (groups.some((grp) => grp.t === 'moab' || grp.t === 'bfb')) this.sfx.play('moab');
     this.ui.refresh();
   }
 
@@ -95,6 +110,7 @@ export default class Game {
     this.roundActive = false;
     this.round += 1;
     this.cash += roundEndCash(this.round) + this.meta.getRoundCashBonus();
+    this.sfx.play('cash');
 
     // Banana farms produce; banks add interest.
     for (const t of this.towers) {
@@ -116,6 +132,7 @@ export default class Game {
 
   _finishRun(result) {
     this.state = result;
+    this.sfx.play(result === 'victory' ? 'victory' : 'defeat');
     this._bankPoints(result === 'victory' ? 150 : 0);
     if (result === 'victory') this.ui.showVictory();
     else this.ui.showDefeat();
@@ -177,6 +194,7 @@ export default class Game {
         this.towers.push(tower);
         // dust puff timed to the landing of the drop-in animation
         this.effects.push({ type: 'dust', x, y: y + 16, delay: 0.3, life: 0.45, maxLife: 0.45 });
+        this.sfx.play('place');
         this._recomputeAuras();
         this.selectTower(tower);
         this.placingType = null;
@@ -226,6 +244,7 @@ export default class Game {
     this.cash -= tier.cost;
     tower.buyTier(pathIdx);
     this.effects.push({ type: 'sparkle', x: tower.x, y: tower.y, life: 0.9, maxLife: 0.9 });
+    this.sfx.play('upgrade');
     this._recomputeAuras();
     this.ui.refresh();
     this.ui.showTowerInfo(tower);
@@ -291,6 +310,7 @@ export default class Game {
       b.update(dt, this.path);
       if (b.escaped) {
         this.lives -= rbe(b.typeId);
+        this.sfx.play('leak');
         if (this.lives <= 0) {
           this.lives = 0;
           this._finishRun('defeat');
@@ -314,6 +334,10 @@ export default class Game {
       if (t.spawnT > 0) t.spawnT -= dt;
       if (t.recoilT > 0) t.recoilT -= dt;
       if (t.celebrateT > 0) t.celebrateT -= dt;
+      if (t.spinVel > 0.05) {
+        t.spin += t.spinVel * dt;
+        t.spinVel *= Math.pow(0.1, dt); // exponential decay
+      }
       this._updateTower(t, dt);
     }
 
@@ -350,6 +374,7 @@ export default class Game {
       if (inRange.length === 0) return;
       t.cooldown = 1 / t.stats.rate;
       t.recoilT = 0.15;
+      this.sfx.play('pulse');
       this.effects.push({ type: 'pulse', x: t.x, y: t.y, radius: t.stats.range, color: '#bfe3ff', life: 0.4, maxLife: 0.4 });
       for (const b of inRange) {
         this._damageBloon(b, t.stats.damage, t.def.damageType, t.stats.moabBonus);
@@ -367,6 +392,8 @@ export default class Game {
       if (!any) return;
       t.cooldown = 1 / t.stats.rate;
       t.recoilT = 0.15;
+      t.spinVel = 14; // Ballerina pirouette
+      this.sfx.play('shoot');
       const n = t.stats.radialCount;
       for (let i = 0; i < n; i++) {
         const angle = (i / n) * Math.PI * 2 + Math.random() * 0.15;
@@ -390,6 +417,9 @@ export default class Game {
     const angle = Math.atan2(future.y - t.y, future.x - t.x);
     t.aimAngle = angle;
     t.recoilT = 0.15;
+    if (t.def.projStyle === 'bomb') this.sfx.play('shootBomb');
+    else if (t.def.projStyle === 'plasma') this.sfx.play('shootPlasma');
+    else this.sfx.play('shoot');
 
     const shots = 1 + (t.stats.multishot || 0);
     for (let i = 0; i < shots; i++) {
@@ -428,6 +458,7 @@ export default class Game {
 
       if (p.aoeRadius > 0) {
         // explosion: damage everything in radius, projectile dies
+        this.sfx.play('boom');
         this.effects.push({ type: 'boom', x: b.x, y: b.y, radius: p.aoeRadius, life: 0.3, maxLife: 0.3 });
         for (const e of this.bloons) {
           if (!e.alive) continue;
@@ -473,6 +504,7 @@ export default class Game {
   // MOAB-class goes down in a chain of staggered explosions.
   _spawnDeathFx(b) {
     const r = b.def.radius;
+    this.sfx.play(b.isMoab ? 'moabBoom' : 'pop');
     this.effects.push({ type: 'pop', x: b.x, y: b.y, radius: r, color: b.def.color, life: 0.28, maxLife: 0.28 });
 
     const nShards = b.isMoab ? 16 : 7;
