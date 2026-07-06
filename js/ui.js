@@ -64,7 +64,12 @@ export default class UI {
     this.abilityBtns = {};
     this._abilityKey = '';
 
-    this.hintEl = el('div', 'sb-hint', 'Click a character, then click the map to place. Right-click cancels. Space starts / speeds up.');
+    // visible cancel while placing — touch devices have no right-click/Esc
+    this.cancelPlaceBtn = el('button', 'cancel-place-btn hidden', '✕ Cancel placing');
+    this.cancelPlaceBtn.addEventListener('click', () => this.game.cancelPlacing());
+    document.getElementById('app').appendChild(this.cancelPlaceBtn);
+
+    this.hintEl = el('div', 'sb-hint', 'Tap a character, then tap the map to place it. Abilities: buttons bottom-left (keys 1-8).');
     this.sidebar.appendChild(this.hintEl);
 
     this.refreshShop();
@@ -107,6 +112,7 @@ export default class UI {
       }
     }
     this._refreshAbilityBar();
+    this.cancelPlaceBtn.classList.toggle('hidden', !this.game.placingType);
   }
 
   // Rebuild the ability bar when the set of placed types changes; otherwise

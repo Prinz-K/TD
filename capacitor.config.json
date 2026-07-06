@@ -1,0 +1,22 @@
+{
+  "appId": "de.nickbaumbach.brainrottd",
+  "appName": "Brainrot TD",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#bdeaff"
+  },
+  "ios": {
+    "backgroundColor": "#bdeaff",
+    "contentInset": "never"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#bdeaff",
+      "showSpinner": false
+    }
+  }
+}

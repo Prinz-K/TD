@@ -188,11 +188,16 @@ export default class Game {
   // ----------------------------------------------------------- input ----
 
   _bindInput() {
-    this.canvas.addEventListener('mousemove', (e) => {
+    // pointer events cover mouse and touch (finger drag updates the ghost)
+    const trackPointer = (e) => {
       const r = this.canvas.getBoundingClientRect();
       this.mouse.x = (e.clientX - r.left) * (CANVAS_W / r.width);
       this.mouse.y = (e.clientY - r.top) * (CANVAS_H / r.height);
-    });
+    };
+    this.canvas.addEventListener('pointermove', trackPointer);
+    // a direct tap fires pointerdown+click without a prior move — update
+    // the position first so the click lands where the finger did
+    this.canvas.addEventListener('pointerdown', trackPointer);
     this.canvas.addEventListener('mouseleave', () => {
       this.mouse.x = -100;
       this.mouse.y = -100;
