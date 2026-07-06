@@ -43,13 +43,26 @@ export default class UI {
     this.speedBtn = el('button', 'speed-btn', '▶▶ 1x');
     this.speedBtn.addEventListener('click', () => this.game.toggleSpeed());
     this.muteBtn = el('button', 'mute-btn', this.game.sfx.muted ? '🔇' : '🔊');
-    this.muteBtn.title = 'Toggle sound';
+    this.muteBtn.title = 'Toggle sound effects';
     this.muteBtn.addEventListener('click', () => {
       const muted = this.game.sfx.toggleMuted();
       this.muteBtn.textContent = muted ? '🔇' : '🔊';
     });
-    controls.append(this.startBtn, this.speedBtn, this.muteBtn);
+    this.musicBtn = el('button', 'mute-btn', this.game.music.muted ? '🔕' : '🎵');
+    this.musicBtn.title = 'Toggle music';
+    this.musicBtn.addEventListener('click', () => {
+      const muted = this.game.music.toggleMuted();
+      this.musicBtn.textContent = muted ? '🔕' : '🎵';
+    });
+    controls.append(this.startBtn, this.speedBtn, this.muteBtn, this.musicBtn);
     this.sidebar.appendChild(controls);
+
+    // ability bar floats over the bottom-left of the playfield (lives in
+    // #app, not #overlay-root, so hideOverlays() doesn't wipe it)
+    this.abilityBar = el('div', 'ability-bar');
+    document.getElementById('app').appendChild(this.abilityBar);
+    this.abilityBtns = {};
+    this._abilityKey = '';
 
     this.hintEl = el('div', 'sb-hint', 'Click a character, then click the map to place. Right-click cancels. Space starts / speeds up.');
     this.sidebar.appendChild(this.hintEl);
@@ -91,6 +104,48 @@ export default class UI {
       for (const id of Object.keys(this.shopCards)) {
         this.shopCards[id].classList.toggle('unaffordable', this.game.cash < TOWERS[id].cost);
         this.shopCards[id].classList.toggle('placing', this.game.placingType === id);
+      }
+    }
+    this._refreshAbilityBar();
+  }
+
+  // Rebuild the ability bar when the set of placed types changes; otherwise
+  // just update cooldown labels in place.
+  _refreshAbilityBar() {
+    const placed = TOWER_ORDER.filter((id) => this.game.towers.some((t) => t.typeId === id));
+    const key = this.game.state === 'playing' ? placed.join(',') : '';
+    if (key !== this._abilityKey) {
+      this._abilityKey = key;
+      this.abilityBar.innerHTML = '';
+      this.abilityBtns = {};
+      for (const id of placed) {
+        const def = TOWERS[id];
+        if (!def.ability) continue;
+        const btn = el('button', 'ability-btn');
+        btn.title = `${def.ability.name} — ${def.ability.desc} (${def.ability.cd}s cooldown)`;
+        if (!this.abilityPortraits) this.abilityPortraits = {};
+        if (!this.abilityPortraits[id]) this.abilityPortraits[id] = makePortrait(id, 40);
+        btn.appendChild(this.abilityPortraits[id]);
+        const cd = el('div', 'ability-cd');
+        btn.appendChild(cd);
+        const hotkey = el('div', 'ability-key', String(TOWER_ORDER.indexOf(id) + 1));
+        btn.appendChild(hotkey);
+        btn.addEventListener('click', () => this.game.activateAbility(id));
+        this.abilityBar.appendChild(btn);
+        this.abilityBtns[id] = { btn, cd };
+      }
+    }
+    for (const id of Object.keys(this.abilityBtns)) {
+      const remaining = this.game.abilityCds[id] || 0;
+      const { btn, cd } = this.abilityBtns[id];
+      if (remaining > 0) {
+        btn.classList.add('cooling');
+        btn.disabled = true;
+        cd.textContent = Math.ceil(remaining);
+      } else {
+        btn.classList.remove('cooling');
+        btn.disabled = false;
+        cd.textContent = '';
       }
     }
   }
@@ -194,6 +249,7 @@ export default class UI {
 
   showMenu() {
     this.overlayRoot.innerHTML = '';
+    this._refreshAbilityBar(); // clears the bar outside of runs
     const ov = el('div', 'overlay');
     const panel = el('div', 'menu-panel');
 
@@ -307,6 +363,7 @@ export default class UI {
 
   _showEnd(title, msg, victory) {
     this.overlayRoot.innerHTML = '';
+    this._refreshAbilityBar();
     const ov = el('div', 'overlay');
     const panel = el('div', `menu-panel end ${victory ? 'win' : 'lose'}`);
     panel.appendChild(el('h1', 'menu-title', title));
@@ -323,6 +380,7 @@ export default class UI {
     menu.addEventListener('click', () => {
       this.game._resetRun();
       this.game.state = 'menu';
+      this.game.refreshMusic();
       this.showMenu();
       this.refreshShop();
       this.refresh();

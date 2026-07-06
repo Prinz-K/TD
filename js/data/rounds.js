@@ -30,7 +30,7 @@ export const ROUNDS = [
   /* 17 */ [g('yellow', 20, 0.35), g('lead', 8, 1.1, 6)],
   /* 18 */ [g('pink', 30, 0.35), g('black', 12, 0.5, 5), g('white', 12, 0.5, 8)],
   /* 19 */ [g('black', 20, 0.45), g('white', 20, 0.45, 2), g('pink', 15, 0.3, 10)],
-  /* 20 */ [g('zebra', 15, 0.65)],
+  /* 20 */ [g('zebra', 15, 0.65), g('boss_gusini', 1, 1, 12)],
   /* 21 */ [g('lead', 12, 0.8), g('zebra', 10, 0.6, 5)],
   /* 22 */ [g('black', 25, 0.3), g('white', 25, 0.3, 2)],
   /* 23 */ [g('zebra', 20, 0.45), g('lead', 8, 0.9, 6)],
@@ -40,7 +40,7 @@ export const ROUNDS = [
   /* 27 */ [g('green', 60, 0.15), g('yellow', 30, 0.3, 4, { regrow: true })],
   /* 28 */ [g('rainbow', 10, 0.7, 0, { regrow: true }), g('lead', 10, 0.9, 5)],
   /* 29 */ [g('pink', 30, 0.25, 0, { regrow: true }), g('zebra', 12, 0.5, 6)],
-  /* 30 */ [g('ceramic', 8, 1.1)],
+  /* 30 */ [g('ceramic', 8, 1.1), g('boss_trippi', 1, 1, 14)],
   /* 31 */ [g('rainbow', 15, 0.45), g('pink', 20, 0.3, 4, { camo: true })],
   /* 32 */ [g('ceramic', 10, 0.9), g('zebra', 25, 0.3, 4)],
   /* 33 */ [g('green', 40, 0.18, 0, { camo: true, regrow: true }), g('lead', 12, 0.7, 6)],
@@ -50,7 +50,7 @@ export const ROUNDS = [
   /* 37 */ [g('ceramic', 20, 0.5)],
   /* 38 */ [g('ceramic', 8, 0.8, 0, { camo: true }), g('rainbow', 15, 0.4, 5, { regrow: true })],
   /* 39 */ [g('rainbow', 30, 0.25), g('ceramic', 10, 0.6, 8)],
-  /* 40 */ [g('rainbow', 10, 0.5), g('moab', 1, 1, 10)],
+  /* 40 */ [g('rainbow', 10, 0.5), g('boss_vaca', 1, 1, 12)],
 ];
 
 // Endless freeplay past round 40, scaling up counts and MOAB-class HP.
@@ -63,6 +63,11 @@ export function freeplayRound(round) {
   ];
   if (over % 3 === 0) groups.push(g('ceramic', 10, 0.4, 3, { camo: true }));
   if (round % 5 === 0) groups.push(g('bfb', Math.floor(over / 5), 4.5, 8, { hpMult }));
+  // rotating boss visit every 10 rounds
+  if (round % 10 === 0) {
+    const bosses = ['boss_gusini', 'boss_trippi', 'boss_vaca'];
+    groups.push(g(bosses[Math.floor(round / 10) % 3], 1, 1, 10, { hpMult: hpMult * 2 }));
+  }
   return groups;
 }
 

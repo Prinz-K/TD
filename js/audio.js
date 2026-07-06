@@ -160,6 +160,25 @@ export default class Sfx {
         this._tone({ freq: 175, dur: 0.5, type: 'sawtooth', vol: 0.4, delay: 0.8 });
         break;
       }
+      case 'ability': {
+        this._tone({ freq: 300, freqEnd: 900, dur: 0.18, type: 'sawtooth', vol: 0.35 });
+        this._tone({ freq: 600, freqEnd: 1400, dur: 0.15, type: 'triangle', vol: 0.3, delay: 0.06 });
+        break;
+      }
+      case 'rally': {
+        this._tone({ freq: 523, dur: 0.1, type: 'triangle', vol: 0.35 });
+        this._tone({ freq: 659, dur: 0.14, type: 'triangle', vol: 0.35, delay: 0.09 });
+        break;
+      }
+      case 'dash': {
+        this._noise({ dur: 0.22, vol: 0.45, cutoff: 2500 });
+        this._tone({ freq: 200, freqEnd: 600, dur: 0.2, type: 'sine', vol: 0.25 });
+        break;
+      }
+      case 'towerStun': {
+        this._tone({ freq: 800, freqEnd: 120, dur: 0.25, type: 'sawtooth', vol: 0.3 });
+        break;
+      }
       case 'victory': {
         [523, 659, 784, 1047].forEach((f, i) => {
           this._tone({ freq: f, dur: 0.2, type: 'triangle', vol: 0.45, delay: i * 0.14 });

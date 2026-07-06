@@ -115,9 +115,13 @@ html, body {
 
 .sb-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
 }
+
+.sb-controls .start-btn { flex: 1 1 100%; }
+.sb-controls .speed-btn { flex: 1; }
 
 button {
   font-family: inherit;
@@ -196,7 +200,67 @@ button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 /* ----------------------------------------------------------- overlays ---- */
 
-#overlay-root { position: absolute; inset: 0; pointer-events: none; }
+#overlay-root { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+
+/* ---------------------------------------------------------- ability bar ---- */
+
+.ability-bar {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+
+.ability-btn {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  padding: 4px;
+  border-radius: 14px;
+  border: 3px solid #8a3fb0;
+  background: #f7ecff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ability-btn.cooling {
+  border-color: #b8a8c4;
+  background: #e8e2ee;
+}
+
+.ability-btn.cooling canvas { opacity: 0.35; }
+
+.ability-cd {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: bold;
+  color: #5a3a72;
+  pointer-events: none;
+}
+
+.ability-key {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #8a3fb0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
 
 .overlay {
   position: absolute;

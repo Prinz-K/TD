@@ -4,14 +4,15 @@ import {
 } from './constants.js';
 import { rbe } from './data/bloons.js';
 import { getRound, roundEndCash } from './data/rounds.js';
-import { getTowerDef } from './data/towers.js';
+import { getTowerDef, TOWER_ORDER } from './data/towers.js';
 import { createMap } from './engine/path.js';
 import { Bloon, Tower, Projectile } from './engine/entities.js';
 import {
-  renderMapToCanvas, drawBloon, drawTower, drawProjectile, drawEffect, drawGhost, drawClouds,
+  renderMapToCanvas, drawBloon, drawTower, drawProjectile, drawEffect, drawGhost, drawClouds, drawBossBar,
 } from './render.js';
 import Meta from './meta.js';
 import Sfx from './audio.js';
+import Music from './music.js';
 import UI from './ui.js';
 
 export default class Game {
@@ -24,6 +25,13 @@ export default class Game {
     this.mapCanvas = renderMapToCanvas(this.path, map.theme);
     this.meta = new Meta();
     this.sfx = new Sfx();
+    this.music = new Music(this.sfx);
+    // music may only start after a user gesture (autoplay policy)
+    const startMusic = () => {
+      this.music.start(this._desiredTrack());
+      document.removeEventListener('pointerdown', startMusic);
+    };
+    document.addEventListener('pointerdown', startMusic);
     // slow drifting clouds over the meadow
     this.clouds = [
       { y: 90, scale: 1.1, speed: 9, off: 100 },
@@ -61,6 +69,21 @@ export default class Game {
     this.xpEarned = 0;
     this.pointsBanked = false;
     this.time = 0; // animation clock
+    this.abilityCds = {};   // typeId -> remaining cooldown seconds
+    this.rateBuffs = [];    // [{typeId|null, mult, t}] from abilities
+    this.bossRoundActive = false;
+  }
+
+  // Pick the music track matching the current game situation.
+  _desiredTrack() {
+    if (this.state !== 'playing') return 'menu';
+    if (this.roundActive && this.bossRoundActive) return 'boss';
+    if (this.selectedMapId === 'dunes') return 'dunes';
+    return this.round % 2 === 0 ? 'meadow1' : 'meadow2';
+  }
+
+  refreshMusic() {
+    this.music.setTrack(this._desiredTrack());
   }
 
   // ------------------------------------------------------------ flow ----
@@ -81,6 +104,7 @@ export default class Game {
     this.ui.refreshShop();
     this.ui.refresh();
     this.ui.showTowerInfo(null);
+    this.refreshMusic();
   }
 
   startRound() {
@@ -101,16 +125,20 @@ export default class Game {
     this.spawnQueue.sort((a, b) => a.at - b.at);
     this.roundTime = 0;
     this.roundActive = true;
+    this.bossRoundActive = groups.some((grp) => grp.t === 'moab' || grp.t === 'bfb' || grp.t.startsWith('boss_'));
     this.sfx.play('roundStart');
-    if (groups.some((grp) => grp.t === 'moab' || grp.t === 'bfb')) this.sfx.play('moab');
+    if (this.bossRoundActive) this.sfx.play('moab');
+    this.refreshMusic();
     this.ui.refresh();
   }
 
   _endRound() {
     this.roundActive = false;
+    this.bossRoundActive = false;
     this.round += 1;
     this.cash += roundEndCash(this.round) + this.meta.getRoundCashBonus();
     this.sfx.play('cash');
+    this.refreshMusic();
 
     // Banana farms produce; banks add interest.
     for (const t of this.towers) {
@@ -133,6 +161,7 @@ export default class Game {
   _finishRun(result) {
     this.state = result;
     this.sfx.play(result === 'victory' ? 'victory' : 'defeat');
+    this.refreshMusic();
     this._bankPoints(result === 'victory' ? 150 : 0);
     if (result === 'victory') this.ui.showVictory();
     else this.ui.showDefeat();
@@ -141,6 +170,7 @@ export default class Game {
   continueFreeplay() {
     this.state = 'playing';
     this.ui.hideOverlays();
+    this.refreshMusic();
   }
 
   _bankPoints(bonus = 0) {
@@ -178,6 +208,11 @@ export default class Game {
         e.preventDefault();
         if (!this.roundActive) this.startRound();
         else this.toggleSpeed();
+      }
+      // ability hotkeys 1-8 (TOWER_ORDER)
+      const digit = parseInt(e.key, 10);
+      if (digit >= 1 && digit <= TOWER_ORDER.length) {
+        this.activateAbility(TOWER_ORDER[digit - 1]);
       }
     });
   }
@@ -258,6 +293,110 @@ export default class Game {
     this.ui.refresh();
   }
 
+  // -------------------------------------------------------- abilities ----
+
+  canUseAbility(typeId) {
+    const def = getTowerDef(typeId);
+    if (!def || !def.ability) return false;
+    if (this.state !== 'playing') return false;
+    if ((this.abilityCds[typeId] || 0) > 0) return false;
+    return this.towers.some((t) => t.typeId === typeId);
+  }
+
+  activateAbility(typeId) {
+    if (!this.canUseAbility(typeId)) return false;
+    const def = getTowerDef(typeId);
+    this.abilityCds[typeId] = def.ability.cd;
+    this.sfx.play('ability');
+
+    switch (typeId) {
+      case 'sahur': // all Sahurs attack 3x faster for 6s
+        this.rateBuffs.push({ typeId: 'sahur', mult: 3, t: 6 });
+        for (const t of this.towers) {
+          if (t.typeId === 'sahur') this.effects.push({ type: 'sparkle', x: t.x, y: t.y, life: 0.9, maxLife: 0.9 });
+        }
+        break;
+      case 'ballerina': // every Ballerina fires an instant 24-blade nova
+        for (const t of this.towers) {
+          if (t.typeId !== 'ballerina') continue;
+          t.spinVel = 20;
+          for (let i = 0; i < 24; i++) {
+            const proj = new Projectile(t.x, t.y, (i / 24) * Math.PI * 2, t);
+            proj.maxTravel = t.stats.range + 40;
+            this.projectiles.push(proj);
+          }
+        }
+        break;
+      case 'bombardiro': { // 10 explosions carpet the track
+        for (let i = 0; i < 10; i++) {
+          const pos = this.path.getPos(Math.random() * this.path.total);
+          const delay = i * 0.09;
+          this.effects.push({ type: 'boom', x: pos.x, y: pos.y, radius: 70, delay, life: 0.35, maxLife: 0.35 });
+          for (const b of this.bloons) {
+            if (b.alive && dist(pos.x, pos.y, b.x, b.y) <= 70) {
+              this._damageBloon(b, 40, 'explosion', 0);
+            }
+          }
+        }
+        this.sfx.play('boom');
+        break;
+      }
+      case 'lirili': // freeze everything; MOAB-class heavily slowed
+        for (const b of this.bloons) {
+          if (!b.alive) continue;
+          if (b.isMoab) b.applySlow(1.2, 2.5); // halved to 60% for MOAB-class
+          else b.applyStun(2.5);
+        }
+        this.effects.push({ type: 'pulse', x: CANVAS_W / 2, y: CANVAS_H / 2, radius: CANVAS_W * 0.7, color: '#bfe3ff', life: 0.6, maxLife: 0.6 });
+        break;
+      case 'assassino': { // 80 damage to the strongest visible bloon
+        let target = null;
+        let best = -1;
+        for (const b of this.bloons) {
+          if (!b.alive) continue;
+          const val = b.isMoab ? 1e6 + b.hp : rbe(b.typeId);
+          if (val > best) { best = val; target = b; }
+        }
+        if (target) {
+          this._damageBloon(target, 80, 'normal', 0);
+          this.effects.push({ type: 'pop', x: target.x, y: target.y, radius: 18, color: '#6f4e37', life: 0.3, maxLife: 0.3 });
+        }
+        break;
+      }
+      case 'patapim': // all towers attack 50% faster for 8s
+        this.rateBuffs.push({ typeId: null, mult: 1.5, t: 8 });
+        for (const t of this.towers) {
+          this.effects.push({ type: 'sparkle', x: t.x, y: t.y, life: 0.9, maxLife: 0.9 });
+        }
+        break;
+      case 'bananini': { // instant cash
+        this.cash += 250;
+        const farm = this.towers.find((t) => t.typeId === 'bananini');
+        this.effects.push({ type: 'cash', x: farm.x, y: farm.y - 24, text: '+$250', life: 1.2, maxLife: 1.2 });
+        this.sfx.play('cash');
+        break;
+      }
+      case 'tralalero': // 5 normal damage to every bloon on screen
+        for (const b of [...this.bloons]) {
+          if (b.alive) this._damageBloon(b, 5, 'normal', 0);
+        }
+        this.effects.push({ type: 'pulse', x: CANVAS_W / 2, y: CANVAS_H / 2, radius: CANVAS_W * 0.7, color: '#78c8ff', life: 0.6, maxLife: 0.6 });
+        break;
+      default:
+        break;
+    }
+    return true;
+  }
+
+  // Attack-rate multiplier for a tower from active ability buffs.
+  _rateMultFor(tower) {
+    let mult = 1;
+    for (const buf of this.rateBuffs) {
+      if (buf.typeId === null || buf.typeId === tower.typeId) mult *= buf.mult;
+    }
+    return mult;
+  }
+
   _recomputeAuras() {
     for (const t of this.towers) {
       t.buffs = { rangeMult: 0, rateMult: 0, damageAdd: 0, camo: false };
@@ -296,6 +435,13 @@ export default class Game {
   _update(dt) {
     this.time += dt;
 
+    // ability cooldowns + temporary rate buffs
+    for (const key of Object.keys(this.abilityCds)) {
+      if (this.abilityCds[key] > 0) this.abilityCds[key] -= dt;
+    }
+    for (const buf of this.rateBuffs) buf.t -= dt;
+    this.rateBuffs = this.rateBuffs.filter((buf) => buf.t > 0);
+
     // spawn
     if (this.roundActive) {
       this.roundTime += dt;
@@ -320,6 +466,8 @@ export default class Game {
     }
     this.bloons = this.bloons.filter((b) => b.alive && !b.escaped);
 
+    this._updateBosses(dt);
+
     // Patapim aura slow
     for (const p of this.towers) {
       if (p.typeId === 'patapim' && p.stats.auraSlow > 0) {
@@ -334,6 +482,7 @@ export default class Game {
       if (t.spawnT > 0) t.spawnT -= dt;
       if (t.recoilT > 0) t.recoilT -= dt;
       if (t.celebrateT > 0) t.celebrateT -= dt;
+      if (t.stunT > 0) t.stunT -= dt;
       if (t.spinVel > 0.05) {
         t.spin += t.spinVel * dt;
         t.spinVel *= Math.pow(0.1, dt); // exponential decay
@@ -363,9 +512,62 @@ export default class Game {
     this.ui.refreshStats();
   }
 
+  // Boss special behaviors: spawner (Gusini), regen+rally (Trippi),
+  // dash + tower stun (Vaca).
+  _updateBosses(dt) {
+    for (const b of this.bloons) {
+      if (!b.alive || !b.def.isBoss) continue;
+
+      if (b.def.bossKind === 'spawner') {
+        while (b.nextSpawnHp > 0 && b.hp <= b.nextSpawnHp) {
+          b.nextSpawnHp -= b.maxHp * 0.2;
+          for (let i = 0; i < 6; i++) {
+            this.bloons.push(new Bloon('ceramic', {
+              distance: Math.max(0, b.distance - 20 - i * 18),
+              hpMult: b.hpMult,
+            }));
+          }
+          this.effects.push({ type: 'pulse', x: b.x, y: b.y, radius: 90, color: '#f0b040', life: 0.5, maxLife: 0.5 });
+          this.sfx.play('rally');
+        }
+      } else if (b.def.bossKind === 'regen') {
+        b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.01 * dt);
+        b.pulseT -= dt;
+        if (b.pulseT <= 0) {
+          b.pulseT = 10;
+          for (const e of this.bloons) {
+            if (!e.alive || e.def.isBoss) continue;
+            e.hasteT = 3;
+            e.hasteMult = Math.max(e.hasteMult, 1.4);
+          }
+          this.effects.push({ type: 'pulse', x: b.x, y: b.y, radius: 180, color: '#ff8fb8', life: 0.6, maxLife: 0.6 });
+          this.sfx.play('rally');
+        }
+      } else if (b.def.bossKind === 'vortex') {
+        b.dashT -= dt;
+        if (b.dashT <= 0) {
+          b.dashT = 7;
+          b.hasteT = 1.5;
+          b.hasteMult = 2.5;
+          let stunned = false;
+          for (const t of this.towers) {
+            if (dist(b.x, b.y, t.x, t.y) <= 160) {
+              t.stunT = 2;
+              stunned = true;
+            }
+          }
+          this.effects.push({ type: 'pulse', x: b.x, y: b.y, radius: 160, color: '#b48aff', life: 0.6, maxLife: 0.6 });
+          this.sfx.play('dash');
+          if (stunned) this.sfx.play('towerStun');
+        }
+      }
+    }
+  }
+
   _updateTower(t, dt) {
     if (t.def.attack === 'none') return;
-    t.cooldown -= dt;
+    if (t.stunT > 0) return; // stunned by a vortex boss
+    t.cooldown -= dt * this._rateMultFor(t);
     if (t.cooldown > 0) return;
 
     if (t.def.attack === 'pulse') {
@@ -549,6 +751,9 @@ export default class Game {
     for (const t of this.towers) drawTower(ctx, t, this.selectedTower && t.id === this.selectedTower.id, this.time);
     for (const p of this.projectiles) drawProjectile(ctx, p);
     for (const fx of this.effects) drawEffect(ctx, fx);
+
+    const boss = this.bloons.find((b) => b.alive && b.def.isBoss);
+    if (boss) drawBossBar(ctx, boss);
 
     if (this.placingType && this.state === 'playing') {
       const def = getTowerDef(this.placingType);

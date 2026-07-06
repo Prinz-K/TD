@@ -21,6 +21,7 @@ export const TOWERS = {
     color: '#a9743b', desc: 'Bonks bloons with his trusty bat. Tung tung tung!',
     attack: 'projectile', projStyle: 'bat', damageType: 'sharp',
     range: 130, rate: 0.95, damage: 1, pierce: 2, projSpeed: 520,
+    ability: { name: 'Tung Frenzy', desc: 'All Sahurs attack 3x faster for 6s', cd: 30 },
     paths: [
       { name: 'Bonk Power', tiers: [
         { cost: 120, label: 'Harder Bonks: +2 pierce', fx: { pierce: 2 } },
@@ -46,6 +47,7 @@ export const TOWERS = {
     color: '#f58fb8', desc: 'Spins gracefully, flinging coffee blades in all directions.',
     attack: 'radial', projStyle: 'blade', damageType: 'sharp',
     range: 95, rate: 1.1, damage: 1, pierce: 1, projSpeed: 420, radialCount: 8,
+    ability: { name: 'Blade Nova', desc: 'Every Ballerina instantly fires a 24-blade nova', cd: 25 },
     paths: [
       { name: 'More Blades', tiers: [
         { cost: 130, label: 'Extra Blades: +4 blades', fx: { radialCount: 4 } },
@@ -71,6 +73,7 @@ export const TOWERS = {
     color: '#4a7c2f', desc: 'Aerial crocodile bomber. Explosions pop Lead bloons!',
     attack: 'projectile', projStyle: 'bomb', damageType: 'explosion',
     range: 150, rate: 0.65, damage: 1, pierce: 20, projSpeed: 380, aoeRadius: 55,
+    ability: { name: 'Bombardamento', desc: '10 explosions carpet the track', cd: 40 },
     paths: [
       { name: 'Bigger Bombs', tiers: [
         { cost: 250, label: 'Bigger Bombs: +18 blast radius', fx: { aoeRadius: 18 } },
@@ -96,6 +99,7 @@ export const TOWERS = {
     color: '#9aa8b8', desc: 'Cactus-elephant with a ticking clock. Slows everything nearby.',
     attack: 'pulse', damageType: 'cold',
     range: 100, rate: 0.65, damage: 1, pierce: 999, slowPct: 0.4, slowDur: 2,
+    ability: { name: 'Time Stop', desc: 'Stuns all bloons 2.5s (MOABs slowed 60%)', cd: 45 },
     paths: [
       { name: 'Deep Chill', tiers: [
         { cost: 180, label: 'Colder: slow 55%', fx: { slowPct: 0.15 } },
@@ -121,6 +125,7 @@ export const TOWERS = {
     color: '#6f4e37', desc: 'Silent coffee killer. Fast attacks and camo detection.',
     attack: 'projectile', projStyle: 'shuriken', damageType: 'sharp',
     range: 140, rate: 1.5, damage: 1, pierce: 2, projSpeed: 620, camoDetect: true,
+    ability: { name: 'Contract Kill', desc: '80 damage to the strongest bloon', cd: 35 },
     paths: [
       { name: 'Multi Throw', tiers: [
         { cost: 250, label: 'Twin Beans: throws 2 shurikens', fx: { multishot: 1 } },
@@ -147,6 +152,7 @@ export const TOWERS = {
     attack: 'none', damageType: 'normal',
     range: 120, rate: 0, damage: 0, pierce: 0,
     allyRangeMult: 0.1, allyRateMult: 0,
+    ability: { name: 'War Chant', desc: 'ALL towers attack 50% faster for 8s', cd: 45 },
     paths: [
       { name: 'Growing Grove', tiers: [
         { cost: 250, label: 'Fertile Soil: allies +15% range', fx: { allyRangeMult: 0.15 } },
@@ -172,6 +178,7 @@ export const TOWERS = {
     color: '#f2c744', desc: 'Banana-monkey hybrid. Grows cash every round.',
     attack: 'none', damageType: 'normal',
     range: 60, rate: 0, damage: 0, pierce: 0, income: 80,
+    ability: { name: 'Banana Rush', desc: 'Instantly gain $250', cd: 60 },
     paths: [
       { name: 'More Bananas', tiers: [
         { cost: 500, label: 'Bigger Bunch: +$60 per round', fx: { income: 60 } },
@@ -197,6 +204,7 @@ export const TOWERS = {
     color: '#4a90c2', desc: 'Legendary three-legged shark in Nikes. Hypersonic attacks.',
     attack: 'projectile', projStyle: 'plasma', damageType: 'normal',
     range: 175, rate: 5.5, damage: 1, pierce: 1, projSpeed: 900,
+    ability: { name: 'Shark Storm', desc: '5 damage to every bloon on screen', cd: 40 },
     paths: [
       { name: 'Plasma Waves', tiers: [
         { cost: 1500, label: 'Plasma Chomp: +1 damage', fx: { damage: 1 } },

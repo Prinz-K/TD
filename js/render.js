@@ -440,8 +440,18 @@ function drawMoab(ctx, b, time = 0) {
   const h = r * 1.25;
   const bob = Math.sin(time * 2.4 + b.x * 0.02) * 2.5;
   const y = b.y + bob;
-  const color = b.typeId === 'bfb' ? '#c05555' : '#6e93bd';
+  const kind = b.def.bossKind;
+  let color = b.typeId === 'bfb' ? '#c05555' : '#6e93bd';
+  if (kind) color = b.def.color;
   shadow(ctx, b.x, b.y + h * 0.75, w * 0.5, h * 0.28);
+
+  // dash glow (vortex boss speeding up)
+  if (b.hasteT > 0) {
+    ctx.fillStyle = 'rgba(180,140,255,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(b.x - w * 0.2, y, w * 0.62, h * 0.62, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // tail fins
   ctx.fillStyle = darken(color, 0.7);
@@ -474,6 +484,54 @@ function drawMoab(ctx, b, time = 0) {
   ctx.ellipse(b.x + w * 0.42, y, w * 0.1, h * 0.32, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // boss signature features
+  if (kind === 'spawner') {
+    // Gusini: orange goose beak
+    ctx.fillStyle = '#f0932b';
+    ctx.strokeStyle = darken('#f0932b', 0.65);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(b.x + w * 0.42, y - h * 0.1);
+    ctx.lineTo(b.x + w * 0.62, y + h * 0.02);
+    ctx.lineTo(b.x + w * 0.42, y + h * 0.14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (kind === 'regen') {
+    // Trippi: shrimp tail fan + healing shimmer
+    ctx.fillStyle = darken(color, 0.8);
+    ctx.strokeStyle = darken(color, 0.55);
+    ctx.lineWidth = 2;
+    for (const a of [-0.5, 0, 0.5]) {
+      ctx.beginPath();
+      ctx.ellipse(b.x - w * 0.55, y + a * h * 0.35, w * 0.14, h * 0.12, a * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.fillStyle = `rgba(255,200,220,${0.2 + 0.15 * Math.sin(time * 4)})`;
+    ctx.beginPath();
+    ctx.ellipse(b.x, y, w * 0.55, h * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (kind === 'vortex') {
+    // Vaca Saturno: planet ring around the hull + cow patches
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    for (const [dx, dy, rr] of [[-w * 0.18, -h * 0.05, 7], [w * 0.05, h * 0.15, 6], [-w * 0.02, -h * 0.2, 5]]) {
+      ctx.beginPath();
+      ctx.arc(b.x + dx, y + dy, rr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#e8d27a';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.ellipse(b.x, y + h * 0.05, w * 0.68, h * 0.22, -0.18, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(b.x, y + h * 0.05, w * 0.68, h * 0.22, -0.18, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   // menacing eyes
   eyes(ctx, b.x + w * 0.18, y - h * 0.12, 8, 5, 0.5, 0.1);
   ctx.strokeStyle = darken(color, 0.4);
@@ -494,6 +552,39 @@ function drawMoab(ctx, b, time = 0) {
   }
 
   drawHpBar(ctx, b.x, y - h * 0.5 - 12, w * 0.8, b.hp / b.maxHp);
+}
+
+// Big boss health bar at the top of the playfield.
+export function drawBossBar(ctx, boss) {
+  const w = 420;
+  const x = CANVAS_W / 2;
+  const y = 26;
+  const pct = Math.max(0, boss.hp / boss.maxHp);
+  ctx.save();
+  ctx.font = 'bold 17px "Trebuchet MS", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 4;
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeText(`☠ ${boss.def.name}`, x, y - 6);
+  ctx.fillText(`☠ ${boss.def.name}`, x, y - 6);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  roundRect(ctx, x - w / 2 - 3, y - 3, w + 6, 20, 10);
+  ctx.fill();
+  ctx.fillStyle = '#3a2c3f';
+  roundRect(ctx, x - w / 2, y, w, 14, 7);
+  ctx.fill();
+  const grad = ctx.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
+  grad.addColorStop(0, '#c04af0');
+  grad.addColorStop(1, '#e0556b');
+  ctx.fillStyle = grad;
+  roundRect(ctx, x - w / 2, y, Math.max(6, w * pct), 14, 7);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  roundRect(ctx, x - w / 2, y, Math.max(6, w * pct), 6, 3);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawHpBar(ctx, x, y, w, pct) {
@@ -583,6 +674,21 @@ export function drawTower(ctx, tower, selected, time = 0) {
   // golden crown once any path hits tier 3
   if (Math.max(...tower.tiers) >= 3) {
     drawCrown(ctx, tower.x + ox, tower.y + oy + yOff - 26 * scale, 9 * scale);
+  }
+
+  // dizzy stars while stunned by a vortex boss
+  if (tower.stunT > 0) {
+    ctx.save();
+    ctx.fillStyle = '#ffd34d';
+    ctx.strokeStyle = '#b8860b';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      const a = time * 5 + (i / 3) * Math.PI * 2;
+      const px = tower.x + Math.cos(a) * 16;
+      const py = tower.y - 24 * scale + Math.sin(a) * 5;
+      drawStar(ctx, px, py, 4);
+    }
+    ctx.restore();
   }
 
   if (totalTiers > 0) {

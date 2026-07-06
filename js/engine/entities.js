@@ -26,6 +26,15 @@ export class Bloon {
     this.slowTimer = 0;
     this.stunTimer = 0;
     this.hitT = 0; // white flash when damaged
+    this.hasteT = 0; // boss rally / dash speed boost
+    this.hasteMult = 1;
+
+    // boss behavior state (see game._updateBosses)
+    if (this.def.isBoss) {
+      this.nextSpawnHp = this.maxHp * 0.8; // spawner threshold
+      this.pulseT = 10;                    // regen rally timer
+      this.dashT = 7;                      // vortex dash timer
+    }
   }
 
   setType(typeId, hpMult = 1) {
@@ -41,6 +50,10 @@ export class Bloon {
     if (!this.alive || this.escaped) return;
 
     if (this.hitT > 0) this.hitT -= dt;
+    if (this.hasteT > 0) {
+      this.hasteT -= dt;
+      if (this.hasteT <= 0) this.hasteMult = 1;
+    }
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
       if (this.slowTimer <= 0) this.slowPct = 0;
@@ -58,7 +71,8 @@ export class Bloon {
       return;
     }
 
-    const speed = BASE_SPEED * this.def.speed * (1 - this.slowPct);
+    const haste = this.hasteT > 0 ? this.hasteMult : 1;
+    const speed = BASE_SPEED * this.def.speed * (1 - this.slowPct) * haste;
     this.distance += speed * dt;
     const pos = path.getPos(this.distance);
     this.x = pos.x;
@@ -118,6 +132,7 @@ export class Tower {
     this.animPhase = Math.random() * Math.PI * 2; // idle bob offset
     this.spin = 0;         // pirouette angle (Ballerina)
     this.spinVel = 0;
+    this.stunT = 0;        // stunned by a vortex boss
     this.recompute();
   }
 

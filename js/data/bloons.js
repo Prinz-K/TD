@@ -58,6 +58,23 @@ export const BLOON_TYPES = {
     name: 'BFB', hp: 700, speed: 0.6, radius: 44, color: '#b04a4a',
     children: ['moab', 'moab', 'moab', 'moab'], immune: [], isMoab: true,
   },
+
+  // ---- Bosses (blimp-class with special behaviors, see game._updateBosses) --
+  // Spawner goose: releases ceramics every 20% HP lost.
+  boss_gusini: {
+    name: 'Bombombini Gusini', hp: 350, speed: 0.9, radius: 38, color: '#e8e4da',
+    children: ['ceramic', 'ceramic'], immune: [], isMoab: true, isBoss: true, bossKind: 'spawner',
+  },
+  // Regenerating shrimp-cat: heals itself and rallies bloons around it.
+  boss_trippi: {
+    name: 'Trippi Troppi', hp: 900, speed: 0.75, radius: 40, color: '#e88aa0',
+    children: ['ceramic', 'ceramic'], immune: [], isMoab: true, isBoss: true, bossKind: 'regen',
+  },
+  // Saturn cow: dashes forward and stuns nearby towers with its ring.
+  boss_vaca: {
+    name: 'Vaca Saturno Saturnita', hp: 1800, speed: 0.65, radius: 44, color: '#8a6fc2',
+    children: ['ceramic', 'ceramic', 'ceramic', 'ceramic'], immune: [], isMoab: true, isBoss: true, bossKind: 'vortex',
+  },
 };
 
 const rbeCache = {};
