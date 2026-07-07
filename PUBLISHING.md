@@ -95,9 +95,9 @@ bauen + hochladen.
 ## ⚠️ Rechtliches (bitte vor der Einreichung lesen)
 
 1. **Bloons-TD-Nähe**: Spielmechaniken sind nicht schutzfähig — ein „TD im Stil von
-   Bloons" ist grundsätzlich okay. Aber: Die Begriffe **MOAB/BFB** sind bekannte
-   Ninja-Kiwi-Begriffe. Empfehlung: vor dem Store-Release umbenennen (z. B. „BLIMP" /
-   „MEGA BLIMP") und in Store-Texten **nicht** mit „Bloons" werben.
+   Bloons" ist grundsätzlich okay. Die riskanten Ninja-Kiwi-Begriffe wurden bereits
+   entfernt (MOAB/BFB → „Blimp"/„Mega Blimp", „Nike" → „Sneaker"). Wichtig bleibt:
+   in Store-Texten **nicht** mit „Bloons" werben.
 2. **Brainrot-Charaktere**: Namen wie Tung Tung Tung Sahur etc. sind virale
    Internet-Memes ohne klaren Rechteinhaber; die Grafiken hier sind Eigenkreationen.
    Ein Restrisiko (z. B. Markenanmeldungen Dritter) bleibt — im Zweifel anwaltlich

@@ -26,7 +26,7 @@ export const TOWERS = {
       { name: 'Bonk Power', tiers: [
         { cost: 120, label: 'Harder Bonks: +2 pierce', fx: { pierce: 2 } },
         { cost: 300, label: 'Heavy Bat: +1 damage', fx: { damage: 1 } },
-        { cost: 1400, label: 'MEGA BONK: +3 dmg, +4 pierce, +6 MOAB dmg', fx: { damage: 3, pierce: 4, moabBonus: 6 } },
+        { cost: 1400, label: 'MEGA BONK: +3 dmg, +4 pierce, +6 Blimp dmg', fx: { damage: 3, pierce: 4, moabBonus: 6 } },
       ] },
       { name: 'Tung Tempo', tiers: [
         { cost: 150, label: 'Quick Tung: +40% attack speed', fx: { rateMult: 1.4 } },
@@ -78,7 +78,7 @@ export const TOWERS = {
       { name: 'Bigger Bombs', tiers: [
         { cost: 250, label: 'Bigger Bombs: +18 blast radius', fx: { aoeRadius: 18 } },
         { cost: 500, label: 'Heavy Bombs: +1 damage, +12 radius', fx: { damage: 1, aoeRadius: 12 } },
-        { cost: 1800, label: 'BOMBARDAMENTO: +2 dmg, +30 radius, +8 MOAB dmg', fx: { damage: 2, aoeRadius: 30, moabBonus: 8 } },
+        { cost: 1800, label: 'BOMBARDAMENTO: +2 dmg, +30 radius, +8 Blimp dmg', fx: { damage: 2, aoeRadius: 30, moabBonus: 8 } },
       ] },
       { name: 'Rapid Reload', tiers: [
         { cost: 220, label: 'Faster Reload: +33% attack speed', fx: { rateMult: 1.33 } },
@@ -88,7 +88,7 @@ export const TOWERS = {
       { name: 'Shock & Awe', tiers: [
         { cost: 200, label: 'Long Bombs: +25 range', fx: { range: 25 } },
         { cost: 550, label: 'Concussion: stuns bloons 0.5s', fx: { stun: 0.5 } },
-        { cost: 1500, label: 'Croc Shock: stun 1s, +4 MOAB dmg', fx: { stun: 0.5, moabBonus: 4 } },
+        { cost: 1500, label: 'Croc Shock: stun 1s, +4 Blimp dmg', fx: { stun: 0.5, moabBonus: 4 } },
       ] },
     ],
   },
@@ -99,7 +99,7 @@ export const TOWERS = {
     color: '#9aa8b8', desc: 'Cactus-elephant with a ticking clock. Slows everything nearby.',
     attack: 'pulse', damageType: 'cold',
     range: 100, rate: 0.65, damage: 1, pierce: 999, slowPct: 0.4, slowDur: 2,
-    ability: { name: 'Time Stop', desc: 'Stuns all bloons 2.5s (MOABs slowed 60%)', cd: 45 },
+    ability: { name: 'Time Stop', desc: 'Stuns all bloons 2.5s (Blimps slowed 60%)', cd: 45 },
     paths: [
       { name: 'Deep Chill', tiers: [
         { cost: 180, label: 'Colder: slow 55%', fx: { slowPct: 0.15 } },
@@ -114,7 +114,7 @@ export const TOWERS = {
       { name: 'Sharp Hands', tiers: [
         { cost: 200, label: 'Frost Bite: +1 damage', fx: { damage: 1 } },
         { cost: 450, label: 'Shatter: +2 damage', fx: { damage: 2 } },
-        { cost: 1600, label: 'Tempus Fugit: +3 dmg, +10 MOAB dmg', fx: { damage: 3, moabBonus: 10 } },
+        { cost: 1600, label: 'Tempus Fugit: +3 dmg, +10 Blimp dmg', fx: { damage: 3, moabBonus: 10 } },
       ] },
     ],
   },
@@ -140,7 +140,7 @@ export const TOWERS = {
       { name: 'True Assassin', tiers: [
         { cost: 300, label: 'Sharp Beans: +1 damage', fx: { damage: 1 } },
         { cost: 700, label: 'Lethal Brew: +1 dmg, +2 pierce', fx: { damage: 1, pierce: 2 } },
-        { cost: 2200, label: 'CONTRACT KILL: +2 dmg, +12 MOAB dmg', fx: { damage: 2, moabBonus: 12 } },
+        { cost: 2200, label: 'CONTRACT KILL: +2 dmg, +12 Blimp dmg', fx: { damage: 2, moabBonus: 12 } },
       ] },
     ],
   },
@@ -198,10 +198,10 @@ export const TOWERS = {
     ],
   },
 
-  // Super Monkey role: the shark with Nikes. Expensive, melts everything.
+  // Super Monkey role: the shark in sneakers. Expensive, melts everything.
   tralalero: {
     id: 'tralalero', name: 'Tralalero Tralala', cost: 2500, unlockCost: 800,
-    color: '#4a90c2', desc: 'Legendary three-legged shark in Nikes. Hypersonic attacks.',
+    color: '#4a90c2', desc: 'Legendary three-legged shark in sneakers. Hypersonic attacks.',
     attack: 'projectile', projStyle: 'plasma', damageType: 'normal',
     range: 175, rate: 5.5, damage: 1, pierce: 1, projSpeed: 900,
     ability: { name: 'Shark Storm', desc: '5 damage to every bloon on screen', cd: 40 },
@@ -217,9 +217,9 @@ export const TOWERS = {
         { cost: 5000, label: 'Everywhere Shark: +60 range, x1.5 speed', fx: { range: 60, rateMult: 1.5 } },
       ] },
       { name: 'Shark Missiles', tiers: [
-        { cost: 1200, label: 'Nike Kick: +4 MOAB dmg', fx: { moabBonus: 4 } },
-        { cost: 2600, label: 'Torpedo Fins: +8 MOAB dmg', fx: { moabBonus: 8 } },
-        { cost: 7000, label: 'MOAB EXECUTIONER: +20 MOAB dmg', fx: { moabBonus: 20 } },
+        { cost: 1200, label: 'Sneaker Kick: +4 Blimp dmg', fx: { moabBonus: 4 } },
+        { cost: 2600, label: 'Torpedo Fins: +8 Blimp dmg', fx: { moabBonus: 8 } },
+        { cost: 7000, label: 'BLIMP EXECUTIONER: +20 Blimp dmg', fx: { moabBonus: 20 } },
       ] },
     ],
   },

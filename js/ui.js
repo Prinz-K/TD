@@ -191,7 +191,7 @@ export default class UI {
     if (s.aoeRadius) statBits.push(`Blast ${Math.round(s.aoeRadius)}`);
     if (s.slowPct) statBits.push(`Slow ${Math.round(s.slowPct * 100)}%`);
     if (s.income) statBits.push(`+$${s.income}/round`);
-    if (s.moabBonus) statBits.push(`MOAB +${s.moabBonus}`);
+    if (s.moabBonus) statBits.push(`Blimp +${s.moabBonus}`);
     if (s.camoDetect) statBits.push('Camo ✓');
     this.infoEl.appendChild(el('div', 'ti-stats', statBits.join(' · ')));
 

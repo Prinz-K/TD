@@ -51,11 +51,11 @@ export const BLOON_TYPES = {
     children: ['rainbow', 'rainbow'], immune: [],
   },
   moab: {
-    name: 'MOAB', hp: 200, speed: 1.0, radius: 34, color: '#5b7ea8',
+    name: 'Blimp', hp: 200, speed: 1.0, radius: 34, color: '#5b7ea8',
     children: ['ceramic', 'ceramic', 'ceramic', 'ceramic'], immune: [], isMoab: true,
   },
   bfb: {
-    name: 'BFB', hp: 700, speed: 0.6, radius: 44, color: '#b04a4a',
+    name: 'Mega Blimp', hp: 700, speed: 0.6, radius: 44, color: '#b04a4a',
     children: ['moab', 'moab', 'moab', 'moab'], immune: [], isMoab: true,
   },
 
