@@ -1,6 +1,6 @@
 import {
-  CANVAS_W, CANVAS_H, PATH_WIDTH, TOWER_RADIUS, STARTING_CASH, STARTING_LIVES,
-  CAMPAIGN_ROUNDS, SELL_RATIO, dist, clamp,
+  CANVAS_W, CANVAS_H, PATH_WIDTH, TOWER_RADIUS, STARTING_CASH,
+  CAMPAIGN_ROUNDS, SELL_RATIO, DIFFICULTIES, RUN_SAVE_KEY, dist, clamp,
 } from './constants.js';
 import { rbe } from './data/bloons.js';
 import { getRound, roundEndCash } from './data/rounds.js';
@@ -20,6 +20,7 @@ export default class Game {
     this.canvas = document.getElementById('game-canvas');
     this.ctx = this.canvas.getContext('2d');
     this.selectedMapId = 'meadow';
+    this.difficulty = 'medium';
     const map = createMap(this.selectedMapId);
     this.path = map.path;
     this.mapCanvas = renderMapToCanvas(this.path, map.theme);
@@ -53,7 +54,7 @@ export default class Game {
 
   _resetRun() {
     this.cash = STARTING_CASH + this.meta.getStartCashBonus();
-    this.lives = STARTING_LIVES + this.meta.getStartLivesBonus();
+    this.lives = DIFFICULTIES[this.difficulty].lives + this.meta.getStartLivesBonus();
     this.round = 0; // completed rounds; next is round+1
     this.roundActive = false;
     this.bloons = [];
@@ -90,14 +91,25 @@ export default class Game {
 
   // Only callable from the menu (no towers placed yet).
   setMap(id) {
-    if (this.state !== 'menu' && this.state !== 'victory' && this.state !== 'defeat') return;
+    if (this.state === 'playing') return;
     this.selectedMapId = id;
     const map = createMap(id);
     this.path = map.path;
     this.mapCanvas = renderMapToCanvas(this.path, map.theme);
   }
 
+  setDifficulty(id) {
+    if (this.state === 'playing' || !DIFFICULTIES[id]) return;
+    this.difficulty = id;
+  }
+
+  // Difficulty-scaled price for any base cost (towers, upgrades, sells).
+  price(base) {
+    return Math.round(base * DIFFICULTIES[this.difficulty].priceMult);
+  }
+
   startRun() {
+    this.clearRun();
     this._resetRun();
     this.state = 'playing';
     this.ui.hideOverlays();
@@ -152,6 +164,8 @@ export default class Game {
       }
     }
 
+    this.saveRun();
+
     if (this.round === CAMPAIGN_ROUNDS) {
       this._finishRun('victory');
     }
@@ -163,8 +177,13 @@ export default class Game {
     this.sfx.play(result === 'victory' ? 'victory' : 'defeat');
     this.refreshMusic();
     this._bankPoints(result === 'victory' ? 150 : 0);
-    if (result === 'victory') this.ui.showVictory();
-    else this.ui.showDefeat();
+    if (result === 'victory') {
+      this.saveRun(); // freeplay can continue later; records pointsBanked
+      this.ui.showVictory();
+    } else {
+      this.clearRun(); // the run is over
+      this.ui.showDefeat();
+    }
   }
 
   continueFreeplay() {
@@ -176,8 +195,81 @@ export default class Game {
   _bankPoints(bonus = 0) {
     if (this.pointsBanked) return;
     this.pointsBanked = true;
-    this.earnedPoints = Math.floor(this.xpEarned / 10) + bonus;
+    const mult = DIFFICULTIES[this.difficulty].pointsMult;
+    this.earnedPoints = Math.floor((this.xpEarned / 10) * mult) + bonus;
     this.meta.addPoints(this.earnedPoints);
+  }
+
+  // ---------------------------------------------------- run persistence ----
+
+  // Snapshot the run between rounds so closing the app doesn't lose it.
+  saveRun() {
+    try {
+      localStorage.setItem(RUN_SAVE_KEY, JSON.stringify({
+        mapId: this.selectedMapId,
+        difficulty: this.difficulty,
+        round: this.round,
+        cash: this.cash,
+        lives: this.lives,
+        xpEarned: this.xpEarned,
+        pointsBanked: this.pointsBanked,
+        towers: this.towers.map((t) => ({
+          typeId: t.typeId, x: t.x, y: t.y, tiers: t.tiers, targeting: t.targeting,
+        })),
+      }));
+    } catch (e) { /* storage unavailable */ }
+  }
+
+  _maybeSaveRun() {
+    if (this.state === 'playing' && !this.roundActive) this.saveRun();
+  }
+
+  clearRun() {
+    try { localStorage.removeItem(RUN_SAVE_KEY); } catch (e) { /* ignore */ }
+  }
+
+  loadRunData() {
+    try {
+      const raw = localStorage.getItem(RUN_SAVE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  resumeRun() {
+    const data = this.loadRunData();
+    if (!data) return false;
+    this.state = 'menu'; // allow setMap/setDifficulty
+    this.setDifficulty(data.difficulty);
+    this.setMap(data.mapId);
+    this._resetRun();
+    this.round = data.round;
+    this.cash = data.cash;
+    this.lives = data.lives;
+    this.xpEarned = data.xpEarned || 0;
+    this.pointsBanked = !!data.pointsBanked;
+    for (const td of data.towers || []) {
+      const tower = new Tower(td.typeId, td.x, td.y);
+      tower.tiers = [...td.tiers];
+      tower.targeting = td.targeting || 'First';
+      // rebuild base-cost accounting for correct sell values
+      tower.totalSpent = tower.def.cost;
+      for (let p = 0; p < 3; p++) {
+        for (let i = 0; i < tower.tiers[p]; i++) tower.totalSpent += tower.def.paths[p].tiers[i].cost;
+      }
+      tower.spawnT = 0;
+      tower.recompute();
+      this.towers.push(tower);
+    }
+    this._recomputeAuras();
+    this.state = 'playing';
+    this.ui.hideOverlays();
+    this.ui.refreshShop();
+    this.ui.refresh();
+    this.ui.showTowerInfo(null);
+    this.refreshMusic();
+    return true;
   }
 
   toggleSpeed() {
@@ -227,15 +319,16 @@ export default class Game {
     const { x, y } = this.mouse;
 
     if (this.placingType) {
-      if (this.canPlaceAt(x, y) && this.cash >= getTowerDef(this.placingType).cost) {
+      if (this.canPlaceAt(x, y) && this.cash >= this.price(getTowerDef(this.placingType).cost)) {
         const def = getTowerDef(this.placingType);
-        this.cash -= def.cost;
+        this.cash -= this.price(def.cost);
         const tower = new Tower(this.placingType, x, y);
         this.towers.push(tower);
         // dust puff timed to the landing of the drop-in animation
         this.effects.push({ type: 'dust', x, y: y + 16, delay: 0.3, life: 0.45, maxLife: 0.45 });
         this.sfx.play('place');
         this._recomputeAuras();
+        this._maybeSaveRun();
         this.selectTower(tower);
         this.placingType = null;
         this.ui.refresh();
@@ -280,20 +373,22 @@ export default class Game {
 
   upgradeTower(tower, pathIdx) {
     const tier = tower.nextTier(pathIdx);
-    if (!tier || !tower.canBuyTier(pathIdx) || this.cash < tier.cost) return;
-    this.cash -= tier.cost;
+    if (!tier || !tower.canBuyTier(pathIdx) || this.cash < this.price(tier.cost)) return;
+    this.cash -= this.price(tier.cost);
     tower.buyTier(pathIdx);
     this.effects.push({ type: 'sparkle', x: tower.x, y: tower.y, life: 0.9, maxLife: 0.9 });
     this.sfx.play('upgrade');
     this._recomputeAuras();
+    this._maybeSaveRun();
     this.ui.refresh();
     this.ui.showTowerInfo(tower);
   }
 
   sellTower(tower) {
-    this.cash += tower.sellValue(SELL_RATIO);
+    this.cash += this.price(tower.sellValue(SELL_RATIO));
     this.towers = this.towers.filter((t) => t.id !== tower.id);
     this._recomputeAuras();
+    this._maybeSaveRun();
     this.selectTower(null);
     this.ui.refresh();
   }

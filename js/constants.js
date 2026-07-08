@@ -13,11 +13,19 @@ export const TOWER_RADIUS = 22;
 export const CHAR_SCALE = 1.35;
 
 export const SAVE_KEY = 'brainrot_td_meta_v1';
+export const RUN_SAVE_KEY = 'brainrot_td_run_v1';
 
 export const STARTING_CASH = 650;
-export const STARTING_LIVES = 150;
 export const CAMPAIGN_ROUNDS = 40;
 export const SELL_RATIO = 0.7;
+
+// BTD-style difficulties: lives, price scaling, meta-point scaling.
+export const DIFFICULTIES = {
+  easy: { id: 'easy', name: 'Easy', lives: 200, priceMult: 0.85, pointsMult: 0.8 },
+  medium: { id: 'medium', name: 'Medium', lives: 150, priceMult: 1.0, pointsMult: 1.0 },
+  hard: { id: 'hard', name: 'Hard', lives: 100, priceMult: 1.1, pointsMult: 1.35 },
+};
+export const DIFFICULTY_ORDER = ['easy', 'medium', 'hard'];
 
 export const TARGETING_MODES = ['First', 'Last', 'Strong', 'Close'];
 

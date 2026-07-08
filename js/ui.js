@@ -1,4 +1,4 @@
-import { fmt, CAMPAIGN_ROUNDS, SELL_RATIO } from './constants.js';
+import { fmt, CAMPAIGN_ROUNDS, SELL_RATIO, DIFFICULTIES, DIFFICULTY_ORDER } from './constants.js';
 import { TOWERS, TOWER_ORDER } from './data/towers.js';
 import { MAPS, MAP_ORDER, createMap } from './engine/path.js';
 import { makePortrait, makeMapThumb } from './render.js';
@@ -88,9 +88,9 @@ export default class UI {
       canv.classList.add('portrait');
       card.appendChild(canv);
       card.appendChild(el('div', 'shop-name', def.name));
-      card.appendChild(el('div', 'shop-cost', `$${fmt(def.cost)}`));
+      card.appendChild(el('div', 'shop-cost', `$${fmt(this.game.price(def.cost))}`));
       card.addEventListener('click', () => {
-        if (this.game.cash >= def.cost) this.game.beginPlacing(id);
+        if (this.game.cash >= this.game.price(def.cost)) this.game.beginPlacing(id);
       });
       this.shopEl.appendChild(card);
       this.shopCards[id] = card;
@@ -107,7 +107,7 @@ export default class UI {
     // affordability tint
     if (this.shopCards) {
       for (const id of Object.keys(this.shopCards)) {
-        this.shopCards[id].classList.toggle('unaffordable', this.game.cash < TOWERS[id].cost);
+        this.shopCards[id].classList.toggle('unaffordable', this.game.cash < this.game.price(TOWERS[id].cost));
         this.shopCards[id].classList.toggle('placing', this.game.placingType === id);
       }
     }
@@ -208,7 +208,7 @@ export default class UI {
       this.infoEl.appendChild(tgt);
     }
 
-    const sell = el('button', 'ti-btn sell', `Sell for $${fmt(tower.sellValue(SELL_RATIO))}`);
+    const sell = el('button', 'ti-btn sell', `Sell for $${fmt(this.game.price(tower.sellValue(SELL_RATIO)))}`);
     sell.addEventListener('click', () => this.game.sellTower(tower));
     this.infoEl.appendChild(sell);
 
@@ -239,8 +239,8 @@ export default class UI {
       btn.textContent = 'Locked (crosspath rule)';
       btn.disabled = true;
     } else {
-      btn.textContent = `Buy — $${fmt(next.cost)}`;
-      btn.disabled = this.game.cash < next.cost;
+      btn.textContent = `Buy — $${fmt(this.game.price(next.cost))}`;
+      btn.disabled = this.game.cash < this.game.price(next.cost);
     }
     btn.addEventListener('click', () => this.game.upgradeTower(tower, pathIdx));
     row.appendChild(btn);
@@ -316,6 +316,24 @@ export default class UI {
     }
     panel.appendChild(perkGrid);
 
+    // difficulty select
+    panel.appendChild(el('div', 'menu-section-title', 'Difficulty'));
+    const diffGrid = el('div', 'diff-grid');
+    for (const id of DIFFICULTY_ORDER) {
+      const def = DIFFICULTIES[id];
+      const card = el('div', `diff-card ${id}${this.game.difficulty === id ? ' active' : ''}`);
+      card.appendChild(el('div', 'diff-name', def.name));
+      card.appendChild(el('div', 'diff-info', `❤️ ${def.lives} lives`));
+      card.appendChild(el('div', 'diff-info', `💰 prices ×${def.priceMult}`));
+      card.appendChild(el('div', 'diff-info', `🧠 points ×${def.pointsMult}`));
+      card.addEventListener('click', () => {
+        this.game.setDifficulty(id);
+        this.showMenu();
+      });
+      diffGrid.appendChild(card);
+    }
+    panel.appendChild(diffGrid);
+
     // map select
     panel.appendChild(el('div', 'menu-section-title', 'Map'));
     if (!this.mapThumbs) {
@@ -342,14 +360,29 @@ export default class UI {
     }
     panel.appendChild(mapGrid);
 
-    const play = el('button', 'play-btn', '▶ PLAY');
-    play.addEventListener('click', () => this.game.startRun());
+    // resume a saved run if one exists
+    const saved = this.game.loadRunData();
+    if (saved) {
+      const mapName = (MAPS[saved.mapId] || MAPS.meadow).name;
+      const diffName = (DIFFICULTIES[saved.difficulty] || DIFFICULTIES.medium).name;
+      const cont = el('button', 'play-btn continue-btn',
+        `▶ CONTINUE — Round ${saved.round + 1} · ${mapName} (${diffName})`);
+      cont.addEventListener('click', () => this.game.resumeRun());
+      panel.appendChild(cont);
+    }
+
+    const play = el('button', 'play-btn', saved ? '▶ NEW GAME' : '▶ PLAY');
+    play.addEventListener('click', () => {
+      if (saved && !confirm('Start a new game? Your saved run will be lost.')) return;
+      this.game.startRun();
+    });
     panel.appendChild(play);
 
     const reset = el('button', 'reset-btn', 'Reset all progress');
     reset.addEventListener('click', () => {
-      if (confirm('Erase all Brainrot Points, unlocks and perks?')) {
+      if (confirm('Erase all Brainrot Points, unlocks, perks and the saved run?')) {
         this.game.meta.reset();
+        this.game.clearRun();
         this.showMenu();
       }
     });
@@ -384,6 +417,7 @@ export default class UI {
     }
     const menu = el('button', 'play-btn secondary', 'Back to Menu');
     menu.addEventListener('click', () => {
+      this.game.clearRun();
       this.game._resetRun();
       this.game.state = 'menu';
       this.game.refreshMusic();
