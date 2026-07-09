@@ -1,8 +1,6 @@
-import { fmt, CAMPAIGN_ROUNDS, SELL_RATIO, DIFFICULTIES, DIFFICULTY_ORDER } from './constants.js';
+import { fmt, CAMPAIGN_ROUNDS, SELL_RATIO } from './constants.js';
 import { TOWERS, TOWER_ORDER } from './data/towers.js';
-import { MAPS, MAP_ORDER, createMap } from './engine/path.js';
-import { makePortrait, makeMapThumb } from './render.js';
-import { PERKS } from './meta.js';
+import { makePortrait } from './render.js';
 
 // DOM sidebar (BTD-style shop on the right) + full-screen overlays
 // (main menu with unlock shop, victory, defeat).
@@ -253,145 +251,6 @@ export default class UI {
     this.overlayRoot.innerHTML = '';
   }
 
-  showMenu() {
-    this.overlayRoot.innerHTML = '';
-    this._refreshAbilityBar(); // clears the bar outside of runs
-    const ov = el('div', 'overlay');
-    const panel = el('div', 'menu-panel');
-
-    panel.appendChild(el('h1', 'menu-title', '🧠 BRAINROT TD'));
-    panel.appendChild(el('div', 'menu-sub', 'Pop the bloons. Protect the meadow. Assemble the brainrot squad.'));
-    panel.appendChild(el('div', 'menu-points', `Brainrot Points: ${fmt(this.game.meta.points)} 🧠`));
-
-    // character unlock shop
-    panel.appendChild(el('div', 'menu-section-title', 'Characters'));
-    const grid = el('div', 'unlock-grid');
-    for (const id of TOWER_ORDER) {
-      const def = TOWERS[id];
-      const unlocked = this.game.meta.isUnlocked(id);
-      const card = el('div', `unlock-card${unlocked ? ' unlocked' : ''}`);
-      const pc = makePortrait(id, 52);
-      pc.classList.add('portrait');
-      if (!unlocked) pc.classList.add('locked-img');
-      card.appendChild(pc);
-      card.appendChild(el('div', 'unlock-name', def.name));
-      if (unlocked) {
-        card.appendChild(el('div', 'unlock-state', 'Unlocked ✓'));
-      } else {
-        const btn = el('button', 'unlock-btn', `Unlock — ${def.unlockCost} pts`);
-        btn.disabled = this.game.meta.points < def.unlockCost;
-        btn.addEventListener('click', () => {
-          if (this.game.meta.unlockTower(id)) this.showMenu();
-        });
-        card.appendChild(btn);
-      }
-      grid.appendChild(card);
-    }
-    panel.appendChild(grid);
-
-    // perks
-    panel.appendChild(el('div', 'menu-section-title', 'Permanent Perks'));
-    const perkGrid = el('div', 'perk-grid');
-    for (const key of Object.keys(PERKS)) {
-      const def = PERKS[key];
-      const lvl = this.game.meta.perks[key];
-      const cost = this.game.meta.perkCost(key);
-      const card = el('div', 'perk-card');
-      card.appendChild(el('div', 'perk-name', def.name));
-      card.appendChild(el('div', 'perk-desc', def.desc));
-      card.appendChild(el('div', 'perk-lvl', `Level ${lvl}/${def.max}`));
-      const btn = el('button', 'unlock-btn');
-      if (cost === null) {
-        btn.textContent = 'Maxed';
-        btn.disabled = true;
-      } else {
-        btn.textContent = `Buy — ${cost} pts`;
-        btn.disabled = this.game.meta.points < cost;
-        btn.addEventListener('click', () => {
-          if (this.game.meta.buyPerk(key)) this.showMenu();
-        });
-      }
-      card.appendChild(btn);
-      perkGrid.appendChild(card);
-    }
-    panel.appendChild(perkGrid);
-
-    // difficulty select
-    panel.appendChild(el('div', 'menu-section-title', 'Difficulty'));
-    const diffGrid = el('div', 'diff-grid');
-    for (const id of DIFFICULTY_ORDER) {
-      const def = DIFFICULTIES[id];
-      const card = el('div', `diff-card ${id}${this.game.difficulty === id ? ' active' : ''}`);
-      card.appendChild(el('div', 'diff-name', def.name));
-      card.appendChild(el('div', 'diff-info', `❤️ ${def.lives} lives`));
-      card.appendChild(el('div', 'diff-info', `💰 prices ×${def.priceMult}`));
-      card.appendChild(el('div', 'diff-info', `🧠 points ×${def.pointsMult}`));
-      card.addEventListener('click', () => {
-        this.game.setDifficulty(id);
-        this.showMenu();
-      });
-      diffGrid.appendChild(card);
-    }
-    panel.appendChild(diffGrid);
-
-    // map select
-    panel.appendChild(el('div', 'menu-section-title', 'Map'));
-    if (!this.mapThumbs) {
-      this.mapThumbs = {};
-      for (const id of MAP_ORDER) {
-        const m = createMap(id);
-        this.mapThumbs[id] = makeMapThumb(m.path, m.theme, 168, 112);
-      }
-    }
-    const mapGrid = el('div', 'map-grid');
-    for (const id of MAP_ORDER) {
-      const def = MAPS[id];
-      const card = el('div', `map-card${this.game.selectedMapId === id ? ' active' : ''}`);
-      const thumb = this.mapThumbs[id];
-      thumb.classList.add('map-thumb');
-      card.appendChild(thumb);
-      card.appendChild(el('div', 'map-name', def.name));
-      card.appendChild(el('div', `map-diff ${def.difficulty.toLowerCase()}`, def.difficulty));
-      card.addEventListener('click', () => {
-        this.game.setMap(id);
-        this.showMenu();
-      });
-      mapGrid.appendChild(card);
-    }
-    panel.appendChild(mapGrid);
-
-    // resume a saved run if one exists
-    const saved = this.game.loadRunData();
-    if (saved) {
-      const mapName = (MAPS[saved.mapId] || MAPS.meadow).name;
-      const diffName = (DIFFICULTIES[saved.difficulty] || DIFFICULTIES.medium).name;
-      const cont = el('button', 'play-btn continue-btn',
-        `▶ CONTINUE — Round ${saved.round + 1} · ${mapName} (${diffName})`);
-      cont.addEventListener('click', () => this.game.resumeRun());
-      panel.appendChild(cont);
-    }
-
-    const play = el('button', 'play-btn', saved ? '▶ NEW GAME' : '▶ PLAY');
-    play.addEventListener('click', () => {
-      if (saved && !confirm('Start a new game? Your saved run will be lost.')) return;
-      this.game.startRun();
-    });
-    panel.appendChild(play);
-
-    const reset = el('button', 'reset-btn', 'Reset all progress');
-    reset.addEventListener('click', () => {
-      if (confirm('Erase all Brainrot Points, unlocks, perks and the saved run?')) {
-        this.game.meta.reset();
-        this.game.clearRun();
-        this.showMenu();
-      }
-    });
-    panel.appendChild(reset);
-
-    ov.appendChild(panel);
-    this.overlayRoot.appendChild(ov);
-  }
-
   showVictory() {
     this._showEnd('🏆 VICTORY!', `You survived all ${CAMPAIGN_ROUNDS} rounds!`, true);
   }
@@ -421,10 +280,11 @@ export default class UI {
       this.game._resetRun();
       this.game.state = 'menu';
       this.game.refreshMusic();
-      this.showMenu();
+      this._refreshAbilityBar();
       this.refreshShop();
       this.refresh();
       this.showTowerInfo(null);
+      this.game.menu.show('home');
     });
     panel.appendChild(menu);
 

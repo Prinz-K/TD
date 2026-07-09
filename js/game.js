@@ -14,6 +14,7 @@ import Meta from './meta.js';
 import Sfx from './audio.js';
 import Music from './music.js';
 import UI from './ui.js';
+import MenuUI from './screens.js';
 
 export default class Game {
   constructor() {
@@ -44,9 +45,10 @@ export default class Game {
     this.state = 'menu'; // menu | playing | victory | defeat
     this._resetRun();
     this.ui = new UI(this);
+    this.menu = new MenuUI(this);
 
     this._bindInput();
-    this.ui.showMenu();
+    this.menu.show('title');
 
     this.lastTime = performance.now();
     requestAnimationFrame((t) => this._loop(t));
@@ -69,6 +71,7 @@ export default class Game {
     this.mouse = { x: -100, y: -100 };
     this.xpEarned = 0;
     this.pointsBanked = false;
+    this.popsRecorded = 0;
     this.time = 0; // animation clock
     this.abilityCds = {};   // typeId -> remaining cooldown seconds
     this.rateBuffs = [];    // [{typeId|null, mult, t}] from abilities
@@ -111,6 +114,7 @@ export default class Game {
   startRun() {
     this.clearRun();
     this._resetRun();
+    this.meta.recordGameStart();
     this.state = 'playing';
     this.ui.hideOverlays();
     this.ui.refreshShop();
@@ -177,6 +181,14 @@ export default class Game {
     this.sfx.play(result === 'victory' ? 'victory' : 'defeat');
     this.refreshMusic();
     this._bankPoints(result === 'victory' ? 150 : 0);
+    // only record pops not already counted (victory -> freeplay defeat)
+    const newPops = this.xpEarned - (this.popsRecorded || 0);
+    this.popsRecorded = this.xpEarned;
+    this.meta.recordRun({
+      round: result === 'defeat' ? this.round + 1 : this.round,
+      pops: Math.max(0, newPops),
+      victory: result === 'victory',
+    });
     if (result === 'victory') {
       this.saveRun(); // freeplay can continue later; records pointsBanked
       this.ui.showVictory();
@@ -249,6 +261,8 @@ export default class Game {
     this.lives = data.lives;
     this.xpEarned = data.xpEarned || 0;
     this.pointsBanked = !!data.pointsBanked;
+    // post-victory resumes: those pops were already recorded in the stats
+    this.popsRecorded = this.pointsBanked ? this.xpEarned : 0;
     for (const td of data.towers || []) {
       const tower = new Tower(td.typeId, td.x, td.y);
       tower.tiers = [...td.tiers];

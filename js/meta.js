@@ -15,6 +15,8 @@ export default class Meta {
     this.points = 0;
     this.unlocked = {};
     this.perks = { startCash: 0, startLives: 0, cashRound: 0 };
+    this.profile = { name: '', avatar: 'sahur' };
+    this.stats = { games: 0, victories: 0, bestRound: 0, totalPops: 0, totalPoints: 0 };
     for (const id of TOWER_ORDER) {
       if (TOWERS[id].unlockCost === 0) this.unlocked[id] = true;
     }
@@ -29,29 +31,60 @@ export default class Meta {
       this.points = data.points || 0;
       this.unlocked = { ...this.unlocked, ...(data.unlocked || {}) };
       this.perks = { ...this.perks, ...(data.perks || {}) };
+      this.profile = { ...this.profile, ...(data.profile || {}) };
+      this.stats = { ...this.stats, ...(data.stats || {}) };
     } catch (e) { /* corrupted save: start fresh */ }
   }
 
   save() {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        points: this.points, unlocked: this.unlocked, perks: this.perks,
+        points: this.points,
+        unlocked: this.unlocked,
+        perks: this.perks,
+        profile: this.profile,
+        stats: this.stats,
       }));
     } catch (e) { /* storage unavailable */ }
   }
 
+  // Wipes progress but keeps the local player profile.
   reset() {
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
     this.points = 0;
     this.unlocked = {};
     this.perks = { startCash: 0, startLives: 0, cashRound: 0 };
+    this.stats = { games: 0, victories: 0, bestRound: 0, totalPops: 0, totalPoints: 0 };
     for (const id of TOWER_ORDER) {
       if (TOWERS[id].unlockCost === 0) this.unlocked[id] = true;
     }
+    this.save();
+  }
+
+  hasProfile() {
+    return !!this.profile.name;
+  }
+
+  setProfile(name, avatar) {
+    this.profile.name = String(name).slice(0, 16);
+    if (avatar) this.profile.avatar = avatar;
+    this.save();
+  }
+
+  recordRun({ round, pops, victory }) {
+    if (victory) this.stats.victories += 1;
+    this.stats.bestRound = Math.max(this.stats.bestRound, round);
+    this.stats.totalPops += Math.floor(pops);
+    this.save();
+  }
+
+  recordGameStart() {
+    this.stats.games += 1;
+    this.save();
   }
 
   addPoints(n) {
     this.points += n;
+    this.stats.totalPoints += n;
     this.save();
   }
 
